@@ -550,24 +550,50 @@ textarea.field-input { resize:vertical; min-height:80px; }
 // ════════════════════════════════════════════════════════
 // 設定
 // ════════════════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxRE5kH4upHunr2qR2i0S50yL7RybuEtcKtrvfrml2S4rQE8Dj9GkatC3ZZ_we0F21HJA/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbzd2wxYoZGfQ06pEe6HpdWUAB8vSbMPCB6HCinvLZD17nmqMeFSwCjlh2c6shHaMKMQJA/exec';
 const CLIENT_ID = '282285131661-pmekrv7p2rtbf6lsd3gplro93384v42s.apps.googleusercontent.com';
 const CENTER    = [34.66, 133.93];
 const ZOOM      = 13;
 
 // ════════════════════════════════════════════════════════
-// 認証
+// 認証（セッション方式）
 // ════════════════════════════════════════════════════════
-let googleIdToken = null;
-
-function handleGoogleLogin(response) {
-  googleIdToken = response.credential;
-  document.getElementById('auth-overlay').classList.add('hidden');
-  initMap();
-}
+let sessionId = sessionStorage.getItem('nexia_session') || null;
 
 function gasUrl(params) {
-  return GAS_URL + '?' + params + '&idToken=' + encodeURIComponent(googleIdToken);
+  return GAS_URL + '?' + params + '&s=' + (sessionId || '');
+}
+
+function handleGoogleLogin(response) {
+  const idToken = response.credential;
+  // ログイン: JWTを1回だけ送り、短いセッションIDに交換
+  jsonp(GAS_URL + '?action=login&idToken=' + encodeURIComponent(idToken), 30000)
+    .then(data => {
+      if (data.error) {
+        showAuthError('ログイン失敗: ' + data.error);
+        return;
+      }
+      sessionId = data.session;
+      sessionStorage.setItem('nexia_session', sessionId);
+      document.getElementById('auth-overlay').classList.add('hidden');
+      initMap();
+    })
+    .catch(err => {
+      showAuthError('接続エラー: ' + err.message);
+    });
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+// セッション切れ時の再ログイン
+function handleAuthError() {
+  sessionStorage.removeItem('nexia_session');
+  sessionId = null;
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  showAuthError('セッションが切れました。再ログインしてください。');
 }
 
 // ════════════════════════════════════════════════════════
@@ -653,7 +679,8 @@ function loadMapPoints() {
   jsonp(gasUrl('action=getMapPoints'), 90000)
     .then(data => {
       showLoading(false);
-      if (!Array.isArray(data)) { showToast('データ取得エラー'); return; }
+      if (data && data.error && data.error.startsWith('AUTH_ERROR')) { handleAuthError(); return; }
+      if (!Array.isArray(data)) { showToast('エラー: ' + (data.error || JSON.stringify(data))); return; }
       allPoints = data;
       renderMarkers();
       updateStats();
@@ -1058,7 +1085,11 @@ function toDateInput(v) {
 // イベント登録
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  // initMap() は handleGoogleLogin() からログイン後に呼ばれる
+  // セッションが残っていればそのまま地図を表示
+  if (sessionId) {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    initMap();
+  }
 
   document.getElementById('close-btn').onclick  = closePanel;
   document.getElementById('save-btn').onclick   = saveDetail;
@@ -1098,6 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="auth-logo">🗺</div>
   <h2>NEXIA 営業マップ</h2>
   <p>Googleアカウントでログインしてください</p>
+  <div id="auth-error" style="display:none;color:#ff5252;font-size:13px;margin-bottom:8px;"></div>
   <div id="g_id_onload"
     data-client_id="282285131661-pmekrv7p2rtbf6lsd3gplro93384v42s.apps.googleusercontent.com"
     data-callback="handleGoogleLogin"
