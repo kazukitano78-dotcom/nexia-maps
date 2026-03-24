@@ -564,8 +564,18 @@ function gasUrl(params) {
   return GAS_URL + '?' + params + '&s=' + (sessionId || '');
 }
 
+const ALLOWED_EMAILS_CLIENT = ['kazuki.tano78@gmail.com'];
+
 function handleGoogleLogin(response) {
   const idToken = response.credential;
+  // フロント側でメールアドレスを事前チェック
+  try {
+    const payload = JSON.parse(atob(idToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    if (!ALLOWED_EMAILS_CLIENT.includes((payload.email||'').toLowerCase())) {
+      showAuthError('このアカウントはアクセス権限がありません: ' + payload.email);
+      return;
+    }
+  } catch(e) {}
   // ログイン: JWTを1回だけ送り、短いセッションIDに交換
   jsonp(GAS_URL + '?action=login&idToken=' + encodeURIComponent(idToken), 30000)
     .then(data => {
