@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NEXIA 営業マップ</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
+
+/* ── ヘッダー ── */
+#header {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  background:linear-gradient(135deg,#1565c0,#1e88e5);
+  color:white; height:50px;
+  display:flex; align-items:center; gap:10px; padding:0 14px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.3);
+}
+#header h1 { font-size:15px; font-weight:700; flex:1; letter-spacing:0.5px; }
+#stats { font-size:11px; opacity:0.85; white-space:nowrap; }
+
+/* ── 検索バー（サジェスト付き） ── */
+#search-bar {
+  position:fixed; top:50px; left:0; right:0; z-index:499;
+  background:white; padding:8px 12px; display:flex; gap:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.12); height:46px;
+}
+#search-wrap { flex:1; position:relative; }
+#search-input {
+  width:100%; padding:6px 12px; border:1px solid #ddd; border-radius:20px;
+  font-size:13px; outline:none; height:32px;
+}
+#search-input:focus { border-color:#1e88e5; box-shadow:0 0 0 2px rgba(30,136,229,0.15); }
+#search-btn {
+  background:#1e88e5; color:white; border:none; border-radius:20px;
+  padding:6px 16px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0;
+}
+#search-btn:active { background:#1565c0; }
+
+/* サジェストリスト */
+#suggest-list {
+  display:none; position:absolute; top:36px; left:0; right:0; z-index:600;
+  background:white; border:1px solid #e0e0e0; border-radius:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.15); overflow:hidden; max-height:220px; overflow-y:auto;
+}
+.suggest-item {
+  padding:10px 14px; font-size:13px; cursor:pointer; border-bottom:1px solid #f5f5f5;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.suggest-item:last-child { border-bottom:none; }
+.suggest-item:active, .suggest-item:hover { background:#e3f2fd; }
+.suggest-hl { color:#1e88e5; font-weight:700; }
+
+/* ── フィルターバー ── */
+#filter-bar {
+  position:fixed; top:96px; left:0; right:0; z-index:498;
+  background:#f8f9fa; padding:7px 12px;
+  display:flex; gap:6px; overflow-x:auto; align-items:center;
+  border-bottom:1px solid #e0e0e0; height:42px;
+  -webkit-overflow-scrolling:touch;
+}
+#filter-bar::-webkit-scrollbar { display:none; }
+.filter-section { display:flex; gap:5px; align-items:center; flex-shrink:0; }
+.filter-divider { width:1px; height:22px; background:#ddd; margin:0 4px; flex-shrink:0; }
+.fbtn {
+  flex-shrink:0; padding:3px 11px; border-radius:14px;
+  border:1.5px solid #ccc; font-size:11px; font-weight:600;
+  cursor:pointer; background:white; color:#555; transition:all 0.15s;
+}
+.fbtn:active { transform:scale(0.95); }
+.fbtn.active { color:white !important; border-color:transparent !important; }
+.fbtn[data-score="高"].active   { background:#e53935; }
+.fbtn[data-score="中"].active   { background:#fb8c00; }
+.fbtn[data-score="低"].active   { background:#43a047; }
+.fbtn[data-score="すべて"].active { background:#546e7a; }
+.fbtn[data-status="未訪問"].active         { background:#1e88e5; }
+.fbtn[data-status="再アプローチ必要"].active { background:#f57c00; }
+.fbtn[data-status="訪問済み"].active       { background:#757575; }
+.fbtn[data-status="すべて"].active         { background:#546e7a; }
+
+/* ── 地図 ── */
+#map {
+  position:fixed; top:138px; bottom:0; left:0; right:0;
+  width:100%; height:calc(100vh - 138px); z-index:1;
+}
+
+/* ── ピンアイコン ── */
+.pin-icon {
+  width:28px; height:28px; border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg); border:2.5px solid white;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* ── クラスターアイコン ── */
+.ci {
+  width:36px; height:36px; border-radius:50%;
+  background:#1e88e5; color:white;
+  font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  border:3px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.35);
+}
+.ci.lg { width:44px; height:44px; font-size:13px; background:#e53935; }
+.ci.xl { width:52px; height:52px; font-size:14px; background:#6a1b9a; }
+
+/* ── GPS フローティングボタン（右下 親指圏内） ── */
+#gps-btn {
+  position:fixed; bottom:90px; right:16px; z-index:599;
+  width:52px; height:52px; border-radius:50%;
+  background:white; border:none; cursor:pointer;
+  box-shadow:0 3px 12px rgba(0,0,0,0.3);
+  font-size:22px; display:flex; align-items:center; justify-content:center;
+  color:#1e88e5;
+}
+#gps-btn:active { background:#e3f2fd; transform:scale(0.95); }
+
+/* ── 詳細パネル ── */
+#panel {
+  position:fixed; bottom:0; left:0; right:0; z-index:600;
+  background:white; border-radius:18px 18px 0 0;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+  max-height:82vh; display:flex; flex-direction:column;
+  transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+#panel.open { transform:translateY(0); }
+
+/* パネルヘッダー */
+#panel-header {
+  padding:12px 16px 10px; border-bottom:1px solid #f0f0f0;
+  flex-shrink:0;
+}
+#panel-drag { width:40px; height:4px; background:#ddd; border-radius:2px; margin:0 auto 10px; }
+
+/* タイトル行（会社名 + ✕） */
+#panel-title-row {
+  display:flex; align-items:flex-start; gap:8px; margin-bottom:4px;
+}
+#panel-title {
+  flex:1; font-size:15px; font-weight:700; color:#1a1a1a; line-height:1.4;
+}
+#close-btn {
+  flex-shrink:0; width:32px; height:32px; border-radius:50%;
+  background:#f5f5f5; border:none; cursor:pointer;
+  font-size:18px; color:#555; display:flex; align-items:center; justify-content:center;
+  margin-top:-2px;
+}
+#close-btn:active { background:#e0e0e0; }
+
+/* サブタイトル（住所） */
+#panel-subtitle { font-size:12px; color:#888; margin-bottom:8px; line-height:1.4; }
+
+/* GMBボタン（タイトルの下、独立行） */
+#gmb-btn {
+  display:none;
+  background:#34a853; color:white; border:none; border-radius:20px;
+  padding:6px 16px; font-size:12px; font-weight:600; cursor:pointer;
+  margin-top:2px;
+}
+#gmb-btn:active { background:#2d8f47; }
+
+/* ── タブ ── */
+#tabs {
+  display:flex; overflow-x:auto; flex-shrink:0;
+  padding:0 12px; gap:4px; border-bottom:2px solid #f0f0f0;
+  -webkit-overflow-scrolling:touch;
+}
+#tabs::-webkit-scrollbar { display:none; }
+.tab {
+  flex-shrink:0; padding:9px 14px; font-size:12px; font-weight:600;
+  color:#888; cursor:pointer; border-bottom:2px solid transparent;
+  margin-bottom:-2px; white-space:nowrap; transition:all 0.15s;
+}
+.tab.active { color:#1e88e5; border-bottom-color:#1e88e5; }
+
+/* ── タブコンテンツ ── */
+#tab-content { flex:1; overflow-y:auto; padding:14px 16px 24px; }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+/* フォーム要素 */
+.field-group { margin-bottom:14px; }
+.field-label {
+  font-size:11px; font-weight:600; color:#888; margin-bottom:5px;
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+.field-value {
+  font-size:14px; color:#1a1a1a; padding:8px 0;
+  border-bottom:1px solid #f0f0f0; line-height:1.5; min-height:32px;
+}
+.field-input, .field-select {
+  width:100%; padding:9px 12px; border:1px solid #e0e0e0; border-radius:8px;
+  font-size:14px; background:white; font-family:inherit; outline:none;
+}
+.field-input:focus, .field-select:focus { border-color:#1e88e5; box-shadow:0 0 0 2px rgba(30,136,229,0.15); }
+textarea.field-input { resize:vertical; min-height:80px; }
+
+/* スケルトン（詳細読み込み中） */
+.skeleton {
+  background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.2s infinite; border-radius:6px; min-height:20px;
+  color:transparent !important; pointer-events:none;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ステータスバッジ */
+.badge {
+  display:inline-block; padding:2px 10px; border-radius:12px;
+  font-size:11px; font-weight:700; color:white;
+}
+.badge-blue   { background:#1e88e5; }
+.badge-orange { background:#f57c00; }
+.badge-gray   { background:#757575; }
+.badge-red    { background:#e53935; }
+.badge-green  { background:#43a047; }
+
+/* セクション見出し */
+.section-title {
+  font-size:12px; font-weight:700; color:#1e88e5; margin:16px 0 10px;
+  padding-bottom:5px; border-bottom:2px solid #e3f2fd;
+}
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* 保存ボタン */
+#save-btn {
+  display:block; width:calc(100% - 32px); margin:12px 16px;
+  padding:14px; background:linear-gradient(135deg,#1e88e5,#1565c0);
+  color:white; border:none; border-radius:12px;
+  font-size:15px; font-weight:700; cursor:pointer;
+  box-shadow:0 3px 10px rgba(30,136,229,0.4); flex-shrink:0;
+}
+#save-btn:active { transform:scale(0.98); }
+
+/* 読み込み中 */
+#loading {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.75); color:white; padding:18px 28px;
+  border-radius:12px; font-size:14px; z-index:999; display:none; text-align:center;
+}
+.spinner {
+  display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.4);
+  border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite;
+  vertical-align:middle; margin-right:8px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* GPS dot */
+.gps-dot {
+  width:14px; height:14px; border-radius:50%; background:#2196f3;
+  border:3px solid white; box-shadow:0 0 8px rgba(33,150,243,0.6);
+}
+
+/* トースト通知 */
+#toast {
+  position:fixed; bottom:160px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:rgba(50,50,50,0.92); color:white; padding:10px 20px;
+  border-radius:24px; font-size:13px; z-index:700; opacity:0;
+  transition:all 0.3s; white-space:nowrap; pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div id="header">
+  <h1>📍 NEXIA 営業マップ</h1>
+  <span id="stats">読み込み中...</span>
+</div>
+
+<!-- 検索バー -->
+<div id="search-bar">
+  <div id="search-wrap">
+    <input id="search-input" type="text" placeholder="会社名で検索..." autocomplete="off">
+    <div id="suggest-list"></div>
+  </div>
+  <button id="search-btn">検索</button>
+</div>
+
+<!-- フィルターバー -->
+<div id="filter-bar">
+  <div class="filter-section">
+    <div class="fbtn active" data-score="すべて">すべて</div>
+    <div class="fbtn" data-score="高">高</div>
+    <div class="fbtn" data-score="中">中</div>
+    <div class="fbtn" data-score="低">低</div>
+  </div>
+  <div class="filter-divider"></div>
+  <div class="filter-section">
+    <div class="fbtn active" data-status="すべて">全状況</div>
+    <div class="fbtn" data-status="未訪問">未訪問</div>
+    <div class="fbtn" data-status="再アプローチ必要">再AP</div>
+    <div class="fbtn" data-status="訪問済み">訪問済</div>
+  </div>
+</div>
+
+<!-- 地図 -->
+<div id="map"></div>
+
+<!-- GPS フローティングボタン（右下 親指圏内） -->
+<button id="gps-btn" title="現在地へ移動">📍</button>
+
+<!-- 読み込み中 -->
+<div id="loading"><span class="spinner"></span>読み込み中...</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<!-- 詳細パネル -->
+<div id="panel">
+  <div id="panel-header">
+    <div id="panel-drag"></div>
+
+    <!-- タイトル行：会社名 + ✕ボタン -->
+    <div id="panel-title-row">
+      <div id="panel-title">会社名</div>
+      <button id="close-btn">✕</button>
+    </div>
+
+    <!-- 住所 -->
+    <div id="panel-subtitle"></div>
+
+    <!-- Googleマップボタン（独立行） -->
+    <button id="gmb-btn">🗺 Googleマップで開く</button>
+  </div>
+
+  <div id="tabs">
+    <div class="tab active" data-tab="info">企業情報</div>
+    <div class="tab" data-tab="visit">訪問記録</div>
+    <div class="tab" data-tab="bf">ビジネスフォン</div>
+    <div class="tab" data-tab="mfp">複合機</div>
+    <div class="tab" data-tab="other">その他</div>
+  </div>
+
+  <div id="tab-content">
+
+    <!-- 企業情報タブ（読み取り専用） -->
+    <div class="tab-pane active" id="tab-info">
+      <div class="field-group">
+        <div class="field-label">会社名</div>
+        <div class="field-value" id="v-name">—</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">住所</div>
+        <div class="field-value" id="v-address">—</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">電話番号</div>
+        <div class="field-value" id="v-phone">—</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">業種</div>
+        <div class="field-value" id="v-industry">—</div>
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">訪問フラグ</div>
+          <div class="field-value" id="v-flag">—</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">見込み度</div>
+          <div class="field-value" id="v-score">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 訪問記録タブ -->
+    <div class="tab-pane" id="tab-visit">
+      <div class="field-group">
+        <div class="field-label">訪問フラグ</div>
+        <select class="field-select" id="f-flag">
+          <option value="">-- 選択 --</option>
+          <option value="未訪問">未訪問</option>
+          <option value="訪問済み">訪問済み</option>
+          <option value="再アプローチ必要">再アプローチ必要</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">訪問日</div>
+          <input class="field-input" type="date" id="f-visitdate">
+        </div>
+        <div class="field-group">
+          <div class="field-label">次回接触日</div>
+          <input class="field-input" type="date" id="f-nextdate">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">最終対応者</div>
+        <input class="field-input" type="text" id="f-person" placeholder="担当者名">
+      </div>
+      <div class="field-group">
+        <div class="field-label">キーマン名前</div>
+        <input class="field-input" type="text" id="f-keyman" placeholder="キーマン名">
+      </div>
+      <div class="field-group">
+        <div class="field-label">キーマン携帯番号</div>
+        <input class="field-input" type="tel" id="f-mobile" placeholder="090-xxxx-xxxx">
+      </div>
+      <div class="field-group">
+        <div class="field-label">社長の在社時間</div>
+        <input class="field-input" type="text" id="f-president" placeholder="例：平日 10〜17時">
+      </div>
+      <div class="field-group">
+        <div class="field-label">訪問結果</div>
+        <select class="field-select" id="f-result">
+          <option value="">-- 選択 --</option>
+          <option value="不在">不在</option>
+          <option value="対応なし">対応なし</option>
+          <option value="名刺交換">名刺交換</option>
+          <option value="ヒアリング完了">ヒアリング完了</option>
+          <option value="提案中">提案中</option>
+          <option value="検討中">検討中</option>
+          <option value="成約">成約</option>
+          <option value="断られた">断られた</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">見込み度</div>
+        <select class="field-select" id="f-score">
+          <option value="">-- 選択 --</option>
+          <option value="高">高</option>
+          <option value="中">中</option>
+          <option value="低">低</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ビジネスフォンタブ -->
+    <div class="tab-pane" id="tab-bf">
+      <div class="field-group">
+        <div class="field-label">ビジネスフォン有無</div>
+        <select class="field-select" id="f-bf">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-bf-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-bf-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-bf-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-bf-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-bf-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-bf-price" placeholder="例：8,000円">
+      </div>
+    </div>
+
+    <!-- 複合機タブ -->
+    <div class="tab-pane" id="tab-mfp">
+      <div class="field-group">
+        <div class="field-label">複合機有無</div>
+        <select class="field-select" id="f-mfp">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-mfp-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-mfp-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-mfp-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-mfp-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-mfp-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-mfp-price" placeholder="例：15,000円">
+      </div>
+    </div>
+
+    <!-- その他タブ -->
+    <div class="tab-pane" id="tab-other">
+      <div class="field-group">
+        <div class="field-label">備考欄</div>
+        <textarea class="field-input" id="f-memo" rows="5" placeholder="自由メモ..."></textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">最終更新日</div>
+        <div class="field-value" id="v-updated">—</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+
+  <button id="save-btn">💾 保存する</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// 設定
+// ════════════════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyXMfmh6-P5aQP_SOVR2oK6TdywByHXfE6ZuEoAVvMBkqdi9EGoPk2ZhKsNO8ijBHEYvQ/exec';
+const CENTER  = [34.66, 133.93];
+const ZOOM    = 13;
+
+// ════════════════════════════════════════════════════════
+// 状態
+// ════════════════════════════════════════════════════════
+let map, clusterGroup;
+let allPoints  = [];   // 軽量マップデータ（起動時に取得）
+let allMarkers = {};   // row → marker
+let detailCache = {};  // row → 詳細データ（キャッシュ）
+let currentRow = null;
+let activeTab  = 'info';
+let filterScore  = 'すべて';
+let filterStatus = 'すべて';
+let gpsMarker = null, gpsCircle = null;
+
+// ════════════════════════════════════════════════════════
+// 地図初期化
+// ════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView(CENTER, ZOOM);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19
+  }).addTo(map);
+
+  clusterGroup = L.markerClusterGroup({
+    iconCreateFunction: function(cluster) {
+      const n = cluster.getChildCount();
+      let cls = n < 20 ? '' : n < 100 ? ' lg' : ' xl';
+      return L.divIcon({ html: `<div class="ci${cls}">${n}</div>`, className:'', iconSize:[40,40] });
+    },
+    disableClusteringAtZoom: 16,
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+    animate: true
+  });
+  map.addLayer(clusterGroup);
+
+  initGPS();
+  loadMapPoints();
+}
+
+// ════════════════════════════════════════════════════════
+// JSONP
+// ════════════════════════════════════════════════════════
+function jsonp(url, timeoutMs) {
+  timeoutMs = timeoutMs || 30000;
+  return new Promise((resolve, reject) => {
+    const cb = '__cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    let done = false;
+    const script = document.createElement('script');
+
+    const timer = setTimeout(() => {
+      if (done) return; done = true;
+      cleanup(); reject(new Error('タイムアウト'));
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cb];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cb] = function(data) {
+      if (done) return; done = true;
+      cleanup(); resolve(data);
+    };
+    script.onerror = function() {
+      if (done) return; done = true;
+      cleanup(); reject(new Error('読み込みエラー'));
+    };
+    const sep = url.includes('?') ? '&' : '?';
+    script.src = url + sep + 'callback=' + cb + '&_t=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// 起動時：軽量データ読み込み
+// ════════════════════════════════════════════════════════
+function loadMapPoints() {
+  showLoading(true);
+  jsonp(GAS_URL + '?action=getMapPoints', 90000)
+    .then(data => {
+      showLoading(false);
+      if (!Array.isArray(data)) { showToast('データ取得エラー'); return; }
+      allPoints = data;
+      renderMarkers();
+      updateStats();
+      showToast(`${data.length}社 読み込み完了`);
+    })
+    .catch(err => {
+      showLoading(false);
+      showToast('接続エラー: ' + err.message);
+    });
+}
+
+// ════════════════════════════════════════════════════════
+// マーカー描画
+// ════════════════════════════════════════════════════════
+function pinColor(point) {
+  const f = point.f || '';
+  if (f === '訪問済み')         return '#757575';
+  if (f === '再アプローチ必要') return '#f57c00';
+  return '#1e88e5';
+}
+
+function renderMarkers() {
+  clusterGroup.clearLayers();
+  allMarkers = {};
+  const filtered = applyFilter(allPoints);
+  filtered.forEach(pt => {
+    const color = pinColor(pt);
+    const icon = L.divIcon({
+      html: `<div class="pin-icon" style="background:${color}"></div>`,
+      className: '', iconSize: [28,28], iconAnchor:[14,28], popupAnchor:[0,-30]
+    });
+    const marker = L.marker([pt.la, pt.lo], { icon });
+    marker._point = pt;
+    marker.on('click', () => openPinDetail(pt));
+    allMarkers[pt.r] = marker;
+    clusterGroup.addLayer(marker);
+  });
+  updateStats(filtered.length);
+}
+
+function applyFilter(points) {
+  return points.filter(pt => {
+    const scoreOk  = filterScore  === 'すべて' || pt.l === filterScore;
+    const statusOk = filterStatus === 'すべて' || pt.f === filterStatus;
+    return scoreOk && statusOk;
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// ピンクリック → 即時表示 ＋ キャッシュ付き詳細取得
+// ════════════════════════════════════════════════════════
+function openPinDetail(pt) {
+  currentRow = pt.r;
+
+  // ── 即座にパネルを開いて基本情報を表示（待ち時間ゼロ）──
+  document.getElementById('panel-title').textContent    = pt.n || '読み込み中...';
+  document.getElementById('panel-subtitle').textContent = '';
+
+  // GMBボタン（place_idはallPointsにある）
+  const gmbBtn = document.getElementById('gmb-btn');
+  if (pt.pid) {
+    gmbBtn.style.display = 'inline-block';
+    gmbBtn.onclick = () => window.open(
+      'https://www.google.com/maps/search/?api=1&query=Google&query_place_id=' + pt.pid, '_blank'
+    );
+  } else {
+    gmbBtn.style.display = 'none';
+  }
+
+  // 企業情報タブに基本データを即表示
+  setText('v-name', pt.n);
+  setFlagBadge('v-flag', pt.f);
+  setScoreBadge('v-score', pt.l);
+  setText('v-address', '');
+  setText('v-phone', '');
+  setText('v-industry', '');
+
+  openPanel();
+  switchTab('info');
+
+  // キャッシュがあれば即座に完全表示
+  if (detailCache[pt.r]) {
+    populatePanel(detailCache[pt.r]);
+  } else {
+    // スケルトン表示
+    ['v-address','v-phone','v-industry'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '　'; el.classList.add('skeleton'); }
+    });
+
+    // GASから詳細を非同期取得
+    jsonp(GAS_URL + '?action=getCompanyDetail&row=' + pt.r, 20000)
+      .then(detail => {
+        if (detail.error) { showToast('取得エラー: ' + detail.error); return; }
+        detailCache[pt.r] = detail;           // キャッシュ保存
+        if (currentRow === pt.r) populatePanel(detail); // まだ同じパネルが開いている場合のみ更新
+      })
+      .catch(err => showToast('詳細取得エラー: ' + err.message));
+  }
+
+  // 地図をそのピンへ移動
+  map.flyTo([pt.la, pt.lo], Math.max(map.getZoom(), 15), { animate: true, duration: 0.8 });
+}
+
+// ════════════════════════════════════════════════════════
+// パネルにデータを展開
+// ════════════════════════════════════════════════════════
+function populatePanel(d) {
+  currentRow = d._row || currentRow;
+
+  // スケルトン解除
+  document.querySelectorAll('.skeleton').forEach(el => el.classList.remove('skeleton'));
+
+  // ヘッダー更新
+  document.getElementById('panel-title').textContent    = d['会社名'] || '(未設定)';
+  document.getElementById('panel-subtitle').textContent = d['住所'] || '';
+
+  // GMBボタン（詳細のplace_idで上書き）
+  const gmbBtn = document.getElementById('gmb-btn');
+  const pid = d['place_id'] || '';
+  if (pid) {
+    gmbBtn.style.display = 'inline-block';
+    gmbBtn.onclick = () => window.open(
+      'https://www.google.com/maps/search/?api=1&query=Google&query_place_id=' + pid, '_blank'
+    );
+  } else {
+    gmbBtn.style.display = 'none';
+  }
+
+  // 企業情報（読み取り専用）
+  setText('v-name',    d['会社名']);
+  setText('v-address', d['住所']);
+  setPhone('v-phone',  d['電話番号']);
+  setText('v-industry',d['業種'] || d['カテゴリ'] || '—');
+  setFlagBadge('v-flag', d['訪問フラグ']);
+  setScoreBadge('v-score', d['見込み度']);
+
+  // 訪問記録
+  setSelect('f-flag',     d['訪問フラグ']);
+  setInput('f-visitdate', toDateInput(d['訪問日']));
+  setInput('f-nextdate',  toDateInput(d['次回接触日']));
+  setInput('f-person',    d['最終対応者']);
+  setInput('f-keyman',    d['キーマン名前']);
+  setInput('f-mobile',    d['キーマン携帯番号']);
+  setInput('f-president', d['社長の在社時間']);
+  setSelect('f-result',   d['訪問結果']);
+  setSelect('f-score',    d['見込み度']);
+
+  // ビジネスフォン
+  setSelect('f-bf',      d['ビジネスフォン']);
+  setInput('f-bf-co',    d['BF設置会社']);
+  setInput('f-bf-maker', d['BFメーカー']);
+  setInput('f-bf-model', d['BF型番']);
+  setInput('f-bf-years', d['BFリース年数']);
+  setInput('f-bf-end',   toDateInput(d['BFリース満了日']));
+  setInput('f-bf-price', d['BFリース料金']);
+
+  // 複合機
+  setSelect('f-mfp',      d['複合機利用']);
+  setInput('f-mfp-co',    d['複合機設置会社']);
+  setInput('f-mfp-maker', d['複合機メーカー']);
+  setInput('f-mfp-model', d['複合機型番']);
+  setInput('f-mfp-years', d['複合機リース年数']);
+  setInput('f-mfp-end',   toDateInput(d['複合機リース満了日']));
+  setInput('f-mfp-price', d['複合機リース料金']);
+
+  // その他
+  setInput('f-memo', d['備考欄']);
+  setText('v-updated', d['最終更新日'] || '—');
+}
+
+// ════════════════════════════════════════════════════════
+// 保存（該当1行のみ更新）
+// ════════════════════════════════════════════════════════
+function saveDetail() {
+  if (!currentRow) return;
+  const data = {
+    '訪問フラグ':       val('f-flag'),
+    '訪問日':           val('f-visitdate'),
+    '次回接触日':       val('f-nextdate'),
+    '最終対応者':       val('f-person'),
+    'キーマン名前':     val('f-keyman'),
+    'キーマン携帯番号': val('f-mobile'),
+    '社長の在社時間':   val('f-president'),
+    '訪問結果':         val('f-result'),
+    '見込み度':         val('f-score'),
+    'ビジネスフォン':   val('f-bf'),
+    'BF設置会社':       val('f-bf-co'),
+    'BFメーカー':       val('f-bf-maker'),
+    'BF型番':           val('f-bf-model'),
+    'BFリース年数':     val('f-bf-years'),
+    'BFリース満了日':   val('f-bf-end'),
+    'BFリース料金':     val('f-bf-price'),
+    '複合機利用':       val('f-mfp'),
+    '複合機設置会社':   val('f-mfp-co'),
+    '複合機メーカー':   val('f-mfp-maker'),
+    '複合機型番':       val('f-mfp-model'),
+    '複合機リース年数': val('f-mfp-years'),
+    '複合機リース満了日': val('f-mfp-end'),
+    '複合機リース料金': val('f-mfp-price'),
+    '備考欄':           val('f-memo'),
+  };
+
+  const url = GAS_URL + '?action=update&row=' + currentRow
+    + '&data=' + encodeURIComponent(JSON.stringify(data));
+
+  showLoading(true);
+  jsonp(url, 20000)
+    .then(res => {
+      showLoading(false);
+      if (res.success) {
+        showToast('✅ 保存しました');
+        // キャッシュ更新
+        if (detailCache[currentRow]) {
+          Object.assign(detailCache[currentRow], data);
+        }
+        // ローカルのallPointsも更新（ピンの色が変わる）
+        const pt = allPoints.find(p => p.r === currentRow);
+        if (pt) {
+          pt.f   = data['訪問フラグ']  || pt.f;
+          pt.res = data['訪問結果']    || pt.res;
+          pt.l   = data['見込み度']    || pt.l;
+          const m = allMarkers[currentRow];
+          if (m) {
+            m.setIcon(L.divIcon({
+              html: `<div class="pin-icon" style="background:${pinColor(pt)}"></div>`,
+              className:'', iconSize:[28,28], iconAnchor:[14,28]
+            }));
+          }
+        }
+      } else {
+        showToast('⚠ 保存エラー: ' + (res.error || '不明'));
+      }
+    })
+    .catch(err => {
+      showLoading(false);
+      showToast('保存失敗: ' + err.message);
+    });
+}
+
+// ════════════════════════════════════════════════════════
+// 検索 ＋ オートコンプリート
+// ════════════════════════════════════════════════════════
+function updateSuggest() {
+  const q = document.getElementById('search-input').value.trim();
+  const list = document.getElementById('suggest-list');
+  if (!q || allPoints.length === 0) { list.style.display = 'none'; return; }
+
+  const lower = q.toLowerCase();
+  const matches = allPoints
+    .filter(pt => pt.n && pt.n.toLowerCase().includes(lower))
+    .slice(0, 8);
+
+  if (!matches.length) { list.style.display = 'none'; return; }
+
+  list.innerHTML = matches.map(pt => {
+    // マッチ部分をハイライト
+    const hi = pt.n.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'),
+      m => `<span class="suggest-hl">${m}</span>`);
+    return `<div class="suggest-item" data-row="${pt.r}">${hi}</div>`;
+  }).join('');
+  list.style.display = 'block';
+
+  list.querySelectorAll('.suggest-item').forEach(item => {
+    item.addEventListener('mousedown', e => {
+      e.preventDefault(); // inputのblurを防ぐ
+      const row = parseInt(item.dataset.row);
+      const pt  = allPoints.find(p => p.r === row);
+      if (!pt) return;
+      document.getElementById('search-input').value = pt.n;
+      list.style.display = 'none';
+      jumpToPin(pt);
+    });
+  });
+}
+
+function jumpToPin(pt) {
+  map.flyTo([pt.la, pt.lo], 17, { animate: true, duration: 1.0 });
+  setTimeout(() => {
+    const m = allMarkers[pt.r];
+    if (m) clusterGroup.zoomToShowLayer(m, () => openPinDetail(pt));
+    else openPinDetail(pt);
+  }, 1000);
+}
+
+function searchCompany() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  document.getElementById('suggest-list').style.display = 'none';
+  if (!q) return;
+  const found = allPoints.find(pt => pt.n && pt.n.toLowerCase().includes(q));
+  if (!found) { showToast('「' + q + '」が見つかりません'); return; }
+  jumpToPin(found);
+}
+
+// ════════════════════════════════════════════════════════
+// GPS現在地
+// ════════════════════════════════════════════════════════
+function initGPS() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    const acc = pos.coords.accuracy;
+    if (gpsMarker) {
+      gpsMarker.setLatLng([lat,lng]);
+      gpsCircle.setLatLng([lat,lng]).setRadius(acc);
+    } else {
+      gpsMarker = L.marker([lat,lng], {
+        icon: L.divIcon({ html:'<div class="gps-dot"></div>', className:'', iconSize:[14,14], iconAnchor:[7,7] }),
+        zIndexOffset: 1000
+      }).addTo(map);
+      gpsCircle = L.circle([lat,lng], { radius:acc, color:'#2196f3', weight:1, fillOpacity:0.08 }).addTo(map);
+    }
+  }, null, { enableHighAccuracy:true, maximumAge:5000 });
+}
+
+function flyToGPS() {
+  if (gpsMarker) map.flyTo(gpsMarker.getLatLng(), 16, { animate:true });
+  else showToast('GPS取得中...');
+}
+
+// ════════════════════════════════════════════════════════
+// パネル操作
+// ════════════════════════════════════════════════════════
+function openPanel()  { document.getElementById('panel').classList.add('open'); }
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  currentRow = null;
+  document.querySelectorAll('.skeleton').forEach(el => el.classList.remove('skeleton'));
+}
+
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+
+// ════════════════════════════════════════════════════════
+// フィルター
+// ════════════════════════════════════════════════════════
+function setScoreFilter(score) {
+  filterScore = score;
+  document.querySelectorAll('.fbtn[data-score]').forEach(b => b.classList.toggle('active', b.dataset.score === score));
+  renderMarkers();
+}
+
+function setStatusFilter(status) {
+  filterStatus = status;
+  document.querySelectorAll('.fbtn[data-status]').forEach(b => b.classList.toggle('active', b.dataset.status === status));
+  renderMarkers();
+}
+
+// ════════════════════════════════════════════════════════
+// UI ユーティリティ
+// ════════════════════════════════════════════════════════
+function updateStats(n) {
+  const total = allPoints.length;
+  const shown = n !== undefined ? n : total;
+  document.getElementById('stats').textContent = shown === total ? `${total}社` : `${shown}/${total}社`;
+}
+
+function showLoading(on) { document.getElementById('loading').style.display = on ? 'block' : 'none'; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function val(id)         { return (document.getElementById(id)||{}).value || ''; }
+function setInput(id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
+function setSelect(id,v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
+function setText(id, v)  { const el = document.getElementById(id); if (el) el.textContent = v || '—'; }
+
+function setPhone(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (v) el.innerHTML = `<a href="tel:${v}" style="color:#1e88e5">${v}</a>`;
+  else el.textContent = '—';
+}
+
+function setFlagBadge(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cls = v === '訪問済み' ? 'badge-gray' : v === '再アプローチ必要' ? 'badge-orange' : 'badge-blue';
+  el.innerHTML = v ? `<span class="badge ${cls}">${v}</span>` : '—';
+}
+
+function setScoreBadge(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cls = v === '高' ? 'badge-red' : v === '中' ? 'badge-orange' : v === '低' ? 'badge-green' : '';
+  el.innerHTML = v ? `<span class="badge ${cls}">${v}</span>` : '—';
+}
+
+function toDateInput(v) {
+  if (!v) return '';
+  return v.replace(/\//g, '-').substring(0, 10);
+}
+
+// ════════════════════════════════════════════════════════
+// イベント登録
+// ════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+
+  document.getElementById('close-btn').onclick  = closePanel;
+  document.getElementById('save-btn').onclick   = saveDetail;
+  document.getElementById('gps-btn').onclick    = flyToGPS;
+  document.getElementById('search-btn').onclick = searchCompany;
+
+  const inp = document.getElementById('search-input');
+  inp.addEventListener('input',  updateSuggest);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') searchCompany(); });
+  inp.addEventListener('blur',   () => setTimeout(() => {
+    document.getElementById('suggest-list').style.display = 'none';
+  }, 150));
+  inp.addEventListener('focus',  updateSuggest);
+
+  // タブ切り替え
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => switchTab(t.dataset.tab);
+  });
+
+  // フィルター
+  document.querySelectorAll('.fbtn[data-score]').forEach(b => {
+    b.onclick = () => setScoreFilter(b.dataset.score);
+  });
+  document.querySelectorAll('.fbtn[data-status]').forEach(b => {
+    b.onclick = () => setStatusFilter(b.dataset.status);
+  });
+
+  // 地図クリックでパネルを閉じる
+  document.getElementById('map').addEventListener('click', e => {
+    if (!e.target.closest('.leaflet-marker-icon')) closePanel();
+  });
+});
+</script>
+</body>
+</html>
