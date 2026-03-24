@@ -602,6 +602,8 @@ function showAuthError(msg) {
 function handleAuthError() {
   sessionStorage.removeItem('nexia_session');
   sessionId = null;
+  cacheClear();
+  detailCache = {};
   document.getElementById('auth-overlay').classList.remove('hidden');
   showAuthError('セッションが切れました。再ログインしてください。');
 }
@@ -610,9 +612,29 @@ function handleAuthError() {
 // 状態
 // ════════════════════════════════════════════════════════
 let map, clusterGroup;
-let allPoints  = [];   // 軽量マップデータ（起動時に取得）
-let allMarkers = {};   // row → marker
-let detailCache = {};  // row → 詳細データ（キャッシュ）
+let allPoints  = [];
+let allMarkers = {};
+const CACHE_KEY_POINTS  = 'nexia_points';
+const CACHE_KEY_DETAILS = 'nexia_details';
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6時間
+
+function cacheLoad(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj.ts > CACHE_TTL_MS) { localStorage.removeItem(key); return null; }
+    return obj.data;
+  } catch(e) { return null; }
+}
+function cacheSave(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+}
+function cacheClear() {
+  localStorage.removeItem(CACHE_KEY_POINTS);
+  localStorage.removeItem(CACHE_KEY_DETAILS);
+}
+let detailCache = cacheLoad(CACHE_KEY_DETAILS) || {};  // row → 詳細データ（localStorage復元）
 let currentRow = null;
 let activeTab  = 'info';
 let filterScore  = 'すべて';
@@ -685,6 +707,16 @@ function jsonp(url, timeoutMs) {
 // 起動時：軽量データ読み込み
 // ════════════════════════════════════════════════════════
 function loadMapPoints() {
+  // localStorageキャッシュがあれば即表示
+  const cached = cacheLoad(CACHE_KEY_POINTS);
+  if (cached && cached.length > 0) {
+    allPoints = cached;
+    renderMarkers();
+    updateStats();
+    showToast(`${cached.length}社 読み込み完了（キャッシュ）`);
+    prefetchAllDetails();
+    return;
+  }
   showLoading(true);
   jsonp(gasUrl('action=getMapPoints'), 90000)
     .then(data => {
@@ -692,14 +724,30 @@ function loadMapPoints() {
       if (data && data.error && data.error.startsWith('AUTH_ERROR')) { handleAuthError(); return; }
       if (!Array.isArray(data)) { showToast('エラー: ' + (data.error || JSON.stringify(data))); return; }
       allPoints = data;
+      cacheSave(CACHE_KEY_POINTS, data);
       renderMarkers();
       updateStats();
       showToast(`${data.length}社 読み込み完了`);
+      prefetchAllDetails();
     })
     .catch(err => {
       showLoading(false);
       showToast('接続エラー: ' + err.message);
     });
+}
+
+// バックグラウンドで全社詳細を取得してキャッシュ
+function prefetchAllDetails() {
+  if (Object.keys(detailCache).length > 100) return; // 既にキャッシュ済み
+  setTimeout(() => {
+    jsonp(gasUrl('action=getAllDetails'), 120000)
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        data.forEach(c => { detailCache[c._row] = c; });
+        cacheSave(CACHE_KEY_DETAILS, detailCache);
+      })
+      .catch(() => {}); // サイレント失敗
+  }, 3000); // ピン表示後3秒後に開始
 }
 
 // ════════════════════════════════════════════════════════
