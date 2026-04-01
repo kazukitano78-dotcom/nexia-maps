@@ -946,7 +946,7 @@ function saveDetail() {
     + '&data=' + encodeURIComponent(JSON.stringify(data)));
 
   showLoading(true);
-  jsonp(url, 20000)
+  jsonp(url, 45000)
     .then(res => {
       showLoading(false);
       if (res.success) {
