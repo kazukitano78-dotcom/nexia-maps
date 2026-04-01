@@ -736,7 +736,6 @@ function loadMapPoints() {
 
 // バックグラウンドで全社詳細を取得してキャッシュ
 function prefetchAllDetails() {
-  if (Object.keys(detailCache).length > 100) return; // 既にキャッシュ済み
   setTimeout(() => {
     jsonp(gasUrl('action=getAllDetails'), 120000)
       .then(data => {
