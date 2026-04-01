@@ -969,6 +969,8 @@ function saveDetail() {
             }));
           }
         }
+        // localStorageキャッシュを更新（リロード後も反映されるよう）
+        cacheSave(CACHE_KEY_POINTS, allPoints);
       } else {
         showToast('⚠ 保存エラー: ' + (res.error || '不明'));
       }
