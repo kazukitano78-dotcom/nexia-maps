@@ -707,22 +707,21 @@ function jsonp(url, timeoutMs) {
 // 起動時：軽量データ読み込み
 // ════════════════════════════════════════════════════════
 function loadMapPoints() {
-  // localStorageキャッシュがあれば即表示
+  // localStorageキャッシュがあれば即表示（体感速度向上）
   const cached = cacheLoad(CACHE_KEY_POINTS);
   if (cached && cached.length > 0) {
     allPoints = cached;
     renderMarkers();
     updateStats();
-    showToast(`${cached.length}社 読み込み完了（キャッシュ）`);
-    prefetchAllDetails();
-    return;
   }
-  showLoading(true);
+  // 常にGASから最新データを取得してキャッシュを更新
   jsonp(gasUrl('action=getMapPoints'), 90000)
     .then(data => {
-      showLoading(false);
       if (data && data.error && data.error.startsWith('AUTH_ERROR')) { handleAuthError(); return; }
-      if (!Array.isArray(data)) { showToast('エラー: ' + (data.error || JSON.stringify(data))); return; }
+      if (!Array.isArray(data)) {
+        if (!cached) showToast('エラー: ' + (data.error || JSON.stringify(data)));
+        return;
+      }
       allPoints = data;
       cacheSave(CACHE_KEY_POINTS, data);
       renderMarkers();
@@ -731,8 +730,7 @@ function loadMapPoints() {
       prefetchAllDetails();
     })
     .catch(err => {
-      showLoading(false);
-      showToast('接続エラー: ' + err.message);
+      if (!cached) showToast('接続エラー: ' + err.message);
     });
 }
 
