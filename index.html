@@ -97,6 +97,9 @@ body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
 .fbtn[data-status="再アプローチ必要"].active { background:#f57c00; }
 .fbtn[data-status="訪問済み"].active       { background:#757575; }
 .fbtn[data-status="すべて"].active         { background:#546e7a; }
+.fbtn[data-cust="顧客"].active   { background:#f9a825; }
+.fbtn[data-cust="新規"].active   { background:#1e88e5; }
+.fbtn[data-cust="すべて"].active { background:#546e7a; }
 
 /* ── 地図 ── */
 #map {
@@ -311,6 +314,12 @@ textarea.field-input { resize:vertical; min-height:80px; }
     <div class="fbtn" data-status="再アプローチ必要">再AP</div>
     <div class="fbtn" data-status="訪問済み">訪問済</div>
   </div>
+  <div class="filter-divider"></div>
+  <div class="filter-section">
+    <div class="fbtn active" data-cust="すべて">全種別</div>
+    <div class="fbtn" data-cust="顧客">顧客</div>
+    <div class="fbtn" data-cust="新規">新規</div>
+  </div>
 </div>
 
 <!-- 地図 -->
@@ -377,22 +386,46 @@ textarea.field-input { resize:vertical; min-height:80px; }
           <div class="field-value" id="v-flag">—</div>
         </div>
         <div class="field-group">
+          <div class="field-label">顧客フラグ</div>
+          <div class="field-value" id="v-cust">—</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field-group">
           <div class="field-label">見込み度</div>
           <div class="field-value" id="v-score">—</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">旧担当者</div>
+          <div class="field-value" id="v-oldperson">—</div>
         </div>
       </div>
     </div>
 
     <!-- 訪問記録タブ -->
     <div class="tab-pane" id="tab-visit">
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">訪問フラグ</div>
+          <select class="field-select" id="f-flag">
+            <option value="">-- 選択 --</option>
+            <option value="未訪問">未訪問</option>
+            <option value="訪問済み">訪問済み</option>
+            <option value="再アプローチ必要">再アプローチ必要</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">顧客フラグ</div>
+          <select class="field-select" id="f-cust">
+            <option value="">-- 選択 --</option>
+            <option value="顧客">顧客</option>
+            <option value="新規">新規</option>
+          </select>
+        </div>
+      </div>
       <div class="field-group">
-        <div class="field-label">訪問フラグ</div>
-        <select class="field-select" id="f-flag">
-          <option value="">-- 選択 --</option>
-          <option value="未訪問">未訪問</option>
-          <option value="訪問済み">訪問済み</option>
-          <option value="再アプローチ必要">再アプローチ必要</option>
-        </select>
+        <div class="field-label">旧担当者</div>
+        <input class="field-input" type="text" id="f-oldperson" placeholder="旧担当者名">
       </div>
       <div class="row2">
         <div class="field-group">
@@ -639,6 +672,7 @@ let currentRow = null;
 let activeTab  = 'info';
 let filterScore  = 'すべて';
 let filterStatus = 'すべて';
+let filterCust   = 'すべて';
 let gpsMarker = null, gpsCircle = null;
 
 // ════════════════════════════════════════════════════════
@@ -751,6 +785,7 @@ function prefetchAllDetails() {
 // マーカー描画
 // ════════════════════════════════════════════════════════
 function pinColor(point) {
+  if (point.cust === '顧客') return '#f9a825'; // 金色（顧客）
   const f = point.f || '';
   if (f === '訪問済み')         return '#757575';
   if (f === '再アプローチ必要') return '#f57c00';
@@ -778,9 +813,11 @@ function renderMarkers() {
 
 function applyFilter(points) {
   return points.filter(pt => {
-    const scoreOk  = filterScore  === 'すべて' || pt.l === filterScore;
-    const statusOk = filterStatus === 'すべて' || pt.f === filterStatus;
-    return scoreOk && statusOk;
+    const scoreOk  = filterScore  === 'すべて' || pt.l    === filterScore;
+    const statusOk = filterStatus === 'すべて' || pt.f    === filterStatus;
+    const custOk   = filterCust   === 'すべて' || pt.cust === filterCust
+                  || (filterCust === '新規' && !pt.cust);
+    return scoreOk && statusOk && custOk;
   });
 }
 
@@ -872,9 +909,13 @@ function populatePanel(d) {
   setText('v-industry',d['業種'] || d['カテゴリ'] || '—');
   setFlagBadge('v-flag', d['訪問フラグ']);
   setScoreBadge('v-score', d['見込み度']);
+  setText('v-cust',      d['顧客フラグ'] || '—');
+  setText('v-oldperson', d['旧担当者']   || '—');
 
   // 訪問記録
   setSelect('f-flag',     d['訪問フラグ']);
+  setSelect('f-cust',     d['顧客フラグ']);
+  setInput('f-oldperson', d['旧担当者']);
   setInput('f-visitdate', toDateInput(d['訪問日']));
   setInput('f-nextdate',  toDateInput(d['次回接触日']));
   setInput('f-person',    d['最終対応者']);
@@ -914,6 +955,8 @@ function saveDetail() {
   if (!currentRow) return;
   const data = {
     '訪問フラグ':       val('f-flag'),
+    '顧客フラグ':       val('f-cust'),
+    '旧担当者':         val('f-oldperson'),
     '訪問日':           val('f-visitdate'),
     '次回接触日':       val('f-nextdate'),
     '最終対応者':       val('f-person'),
@@ -955,9 +998,10 @@ function saveDetail() {
         // ローカルのallPointsも更新（ピンの色が変わる）
         const pt = allPoints.find(p => p.r === currentRow);
         if (pt) {
-          pt.f   = data['訪問フラグ']  || pt.f;
-          pt.res = data['訪問結果']    || pt.res;
-          pt.l   = data['見込み度']    || pt.l;
+          pt.f    = data['訪問フラグ'] || pt.f;
+          pt.res  = data['訪問結果']  || pt.res;
+          pt.l    = data['見込み度']  || pt.l;
+          pt.cust = data['顧客フラグ'] !== undefined ? data['顧客フラグ'] : pt.cust;
           const m = allMarkers[currentRow];
           if (m) {
             m.setIcon(L.divIcon({
@@ -1089,6 +1133,12 @@ function setStatusFilter(status) {
   renderMarkers();
 }
 
+function setCustFilter(cust) {
+  filterCust = cust;
+  document.querySelectorAll('.fbtn[data-cust]').forEach(b => b.classList.toggle('active', b.dataset.cust === cust));
+  renderMarkers();
+}
+
 // ════════════════════════════════════════════════════════
 // UI ユーティリティ
 // ════════════════════════════════════════════════════════
@@ -1172,6 +1222,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelectorAll('.fbtn[data-status]').forEach(b => {
     b.onclick = () => setStatusFilter(b.dataset.status);
+  });
+  document.querySelectorAll('.fbtn[data-cust]').forEach(b => {
+    b.onclick = () => setCustFilter(b.dataset.cust);
   });
 
   // 地図クリックでパネルを閉じる
