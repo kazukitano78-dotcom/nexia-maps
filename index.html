@@ -357,7 +357,12 @@ textarea.field-input { resize:vertical; min-height:80px; }
     <div class="tab" data-tab="visit">訪問記録</div>
     <div class="tab" data-tab="bf">ビジネスフォン</div>
     <div class="tab" data-tab="mfp">複合機</div>
-    <div class="tab" data-tab="other">その他</div>
+    <div class="tab" data-tab="utm">UTM</div>
+    <div class="tab" data-tab="hub">HUB/WiFi</div>
+    <div class="tab" data-tab="srv">サーバー</div>
+    <div class="tab" data-tab="ot1">その他１</div>
+    <div class="tab" data-tab="ot2">その他２</div>
+    <div class="tab" data-tab="other">メモ</div>
   </div>
 
   <div id="tab-content">
@@ -559,6 +564,224 @@ textarea.field-input { resize:vertical; min-height:80px; }
       <div class="field-group">
         <div class="field-label">月額リース料金</div>
         <input class="field-input" type="text" id="f-mfp-price" placeholder="例：15,000円">
+      </div>
+    </div>
+
+    <!-- UTMタブ -->
+    <div class="tab-pane" id="tab-utm">
+      <div class="field-group">
+        <div class="field-label">UTM有無</div>
+        <select class="field-select" id="f-utm">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-utm-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-utm-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-utm-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-utm-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-utm-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-utm-price" placeholder="例：8,000円">
+      </div>
+    </div>
+
+    <!-- HUB/WiFiタブ -->
+    <div class="tab-pane" id="tab-hub">
+      <div class="field-group">
+        <div class="field-label">HUB/WiFi有無</div>
+        <select class="field-select" id="f-hub">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-hub-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-hub-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-hub-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-hub-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-hub-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-hub-price" placeholder="例：8,000円">
+      </div>
+    </div>
+
+    <!-- サーバータブ -->
+    <div class="tab-pane" id="tab-srv">
+      <div class="field-group">
+        <div class="field-label">サーバー有無</div>
+        <select class="field-select" id="f-srv">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-srv-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-srv-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-srv-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-srv-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-srv-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-srv-price" placeholder="例：8,000円">
+      </div>
+    </div>
+
+    <!-- その他１タブ -->
+    <div class="tab-pane" id="tab-ot1">
+      <div class="field-group">
+        <div class="field-label">商材名</div>
+        <input class="field-input" type="text" id="f-ot1-name" placeholder="商材名を入力">
+      </div>
+      <div class="field-group">
+        <div class="field-label">有無</div>
+        <select class="field-select" id="f-ot1">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-ot1-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-ot1-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-ot1-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-ot1-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-ot1-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-ot1-price" placeholder="例：8,000円">
+      </div>
+    </div>
+
+    <!-- その他２タブ -->
+    <div class="tab-pane" id="tab-ot2">
+      <div class="field-group">
+        <div class="field-label">商材名</div>
+        <input class="field-input" type="text" id="f-ot2-name" placeholder="商材名を入力">
+      </div>
+      <div class="field-group">
+        <div class="field-label">有無</div>
+        <select class="field-select" id="f-ot2">
+          <option value="">-- 選択 --</option>
+          <option value="あり">あり</option>
+          <option value="なし">なし</option>
+          <option value="不明">不明</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">設置会社</div>
+        <input class="field-input" type="text" id="f-ot2-co" placeholder="設置会社名">
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">メーカー</div>
+          <input class="field-input" type="text" id="f-ot2-maker">
+        </div>
+        <div class="field-group">
+          <div class="field-label">型番</div>
+          <input class="field-input" type="text" id="f-ot2-model">
+        </div>
+      </div>
+      <div class="section-title">リース情報</div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">リース年数</div>
+          <input class="field-input" type="text" id="f-ot2-years" placeholder="例：5年">
+        </div>
+        <div class="field-group">
+          <div class="field-label">リース満了日</div>
+          <input class="field-input" type="date" id="f-ot2-end">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">月額リース料金</div>
+        <input class="field-input" type="text" id="f-ot2-price" placeholder="例：8,000円">
       </div>
     </div>
 
@@ -943,6 +1166,53 @@ function populatePanel(d) {
   setInput('f-mfp-end',   toDateInput(d['複合機リース満了日']));
   setInput('f-mfp-price', d['複合機リース料金']);
 
+  // UTM
+  setSelect('f-utm',       d['UTM利用']);
+  setInput('f-utm-co',     d['UTM設置会社']);
+  setInput('f-utm-maker',  d['UTMメーカー']);
+  setInput('f-utm-model',  d['UTM型番']);
+  setInput('f-utm-years',  d['UTMリース年数']);
+  setInput('f-utm-end',    toDateInput(d['UTMリース満了日']));
+  setInput('f-utm-price',  d['UTMリース料金']);
+
+  // HUB/WiFi
+  setSelect('f-hub',       d['HUB利用']);
+  setInput('f-hub-co',     d['HUB設置会社']);
+  setInput('f-hub-maker',  d['HUBメーカー']);
+  setInput('f-hub-model',  d['HUB型番']);
+  setInput('f-hub-years',  d['HUBリース年数']);
+  setInput('f-hub-end',    toDateInput(d['HUBリース満了日']));
+  setInput('f-hub-price',  d['HUBリース料金']);
+
+  // サーバー
+  setSelect('f-srv',       d['サーバー利用']);
+  setInput('f-srv-co',     d['サーバー設置会社']);
+  setInput('f-srv-maker',  d['サーバーメーカー']);
+  setInput('f-srv-model',  d['サーバー型番']);
+  setInput('f-srv-years',  d['サーバーリース年数']);
+  setInput('f-srv-end',    toDateInput(d['サーバーリース満了日']));
+  setInput('f-srv-price',  d['サーバーリース料金']);
+
+  // その他１
+  setInput('f-ot1-name',   d['その他１商材名']);
+  setSelect('f-ot1',       d['その他１利用']);
+  setInput('f-ot1-co',     d['その他１設置会社']);
+  setInput('f-ot1-maker',  d['その他１メーカー']);
+  setInput('f-ot1-model',  d['その他１型番']);
+  setInput('f-ot1-years',  d['その他１リース年数']);
+  setInput('f-ot1-end',    toDateInput(d['その他１リース満了日']));
+  setInput('f-ot1-price',  d['その他１リース料金']);
+
+  // その他２
+  setInput('f-ot2-name',   d['その他２商材名']);
+  setSelect('f-ot2',       d['その他２利用']);
+  setInput('f-ot2-co',     d['その他２設置会社']);
+  setInput('f-ot2-maker',  d['その他２メーカー']);
+  setInput('f-ot2-model',  d['その他２型番']);
+  setInput('f-ot2-years',  d['その他２リース年数']);
+  setInput('f-ot2-end',    toDateInput(d['その他２リース満了日']));
+  setInput('f-ot2-price',  d['その他２リース料金']);
+
   // その他
   setInput('f-memo', d['備考欄']);
   setText('v-updated', d['最終更新日'] || '—');
@@ -979,6 +1249,43 @@ function saveDetail() {
     '複合機リース年数': val('f-mfp-years'),
     '複合機リース満了日': val('f-mfp-end'),
     '複合機リース料金': val('f-mfp-price'),
+    'UTM利用':          val('f-utm'),
+    'UTM設置会社':      val('f-utm-co'),
+    'UTMメーカー':      val('f-utm-maker'),
+    'UTM型番':          val('f-utm-model'),
+    'UTMリース年数':    val('f-utm-years'),
+    'UTMリース満了日':  val('f-utm-end'),
+    'UTMリース料金':    val('f-utm-price'),
+    'HUB利用':          val('f-hub'),
+    'HUB設置会社':      val('f-hub-co'),
+    'HUBメーカー':      val('f-hub-maker'),
+    'HUB型番':          val('f-hub-model'),
+    'HUBリース年数':    val('f-hub-years'),
+    'HUBリース満了日':  val('f-hub-end'),
+    'HUBリース料金':    val('f-hub-price'),
+    'サーバー利用':          val('f-srv'),
+    'サーバー設置会社':      val('f-srv-co'),
+    'サーバーメーカー':      val('f-srv-maker'),
+    'サーバー型番':          val('f-srv-model'),
+    'サーバーリース年数':    val('f-srv-years'),
+    'サーバーリース満了日':  val('f-srv-end'),
+    'サーバーリース料金':    val('f-srv-price'),
+    'その他１商材名':        val('f-ot1-name'),
+    'その他１利用':          val('f-ot1'),
+    'その他１設置会社':      val('f-ot1-co'),
+    'その他１メーカー':      val('f-ot1-maker'),
+    'その他１型番':          val('f-ot1-model'),
+    'その他１リース年数':    val('f-ot1-years'),
+    'その他１リース満了日':  val('f-ot1-end'),
+    'その他１リース料金':    val('f-ot1-price'),
+    'その他２商材名':        val('f-ot2-name'),
+    'その他２利用':          val('f-ot2'),
+    'その他２設置会社':      val('f-ot2-co'),
+    'その他２メーカー':      val('f-ot2-maker'),
+    'その他２型番':          val('f-ot2-model'),
+    'その他２リース年数':    val('f-ot2-years'),
+    'その他２リース満了日':  val('f-ot2-end'),
+    'その他２リース料金':    val('f-ot2-price'),
     '備考欄':           val('f-memo'),
   };
 
