@@ -1076,7 +1076,7 @@ function openPinDetail(pt) {
   openPanel();
   switchTab('info');
 
-  // キャッシュがあれば即座に完全表示
+  // キャッシュがあれば即座に表示（体感速度向上）
   if (detailCache[pt.r]) {
     populatePanel(detailCache[pt.r]);
   } else {
@@ -1085,16 +1085,16 @@ function openPinDetail(pt) {
       const el = document.getElementById(id);
       if (el) { el.textContent = '　'; el.classList.add('skeleton'); }
     });
-
-    // GASから詳細を非同期取得
-    jsonp(gasUrl('action=getCompanyDetail&row=' + pt.r), 20000)
-      .then(detail => {
-        if (detail.error) { showToast('取得エラー: ' + detail.error); return; }
-        detailCache[pt.r] = detail;           // キャッシュ保存
-        if (currentRow === pt.r) populatePanel(detail); // まだ同じパネルが開いている場合のみ更新
-      })
-      .catch(err => showToast('詳細取得エラー: ' + err.message));
   }
+
+  // 常にGASから最新データを取得して上書き（スプレッドシート直接編集にも対応）
+  jsonp(gasUrl('action=getCompanyDetail&row=' + pt.r), 20000)
+    .then(detail => {
+      if (detail.error) { showToast('取得エラー: ' + detail.error); return; }
+      detailCache[pt.r] = detail;
+      if (currentRow === pt.r) populatePanel(detail);
+    })
+    .catch(err => { if (!detailCache[pt.r]) showToast('詳細取得エラー: ' + err.message); });
 
   // 地図をそのピンへ移動
   map.flyTo([pt.la, pt.lo], Math.max(map.getZoom(), 15), { animate: true, duration: 0.8 });
