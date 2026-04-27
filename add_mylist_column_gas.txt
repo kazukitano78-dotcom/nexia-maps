@@ -1,0 +1,23 @@
+// ════════════════════════════════════════════════════════════════
+// マイリスト列をシート1に追加するスクリプト
+// ════════════════════════════════════════════════════════════════
+// 【使い方】 GASエディタで addMyListColumn() を選択して ▶ 実行
+
+function addMyListColumn() {
+  const ss    = SpreadsheetApp.openById('1gcD6NIxH3U7f4srEIrCtgQavV7-qAct_U7H3wwQXHMw');
+  const sheet = ss.getSheetByName('シート1') || ss.getSheets()[0];
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+
+  if (headers.indexOf('マイリスト') !== -1) {
+    SpreadsheetApp.getUi().alert('ℹ️ マイリスト列は既に存在します。');
+    return;
+  }
+
+  const newCol = lastCol + 1;
+  sheet.getRange(1, newCol).setValue('マイリスト')
+    .setFontWeight('bold').setBackground('#fff8e1');
+
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert('✅ マイリスト列を追加しました（列' + newCol + '）');
+}

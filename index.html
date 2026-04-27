@@ -72,17 +72,54 @@ body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
 .suggest-item:active, .suggest-item:hover { background:#e3f2fd; }
 .suggest-hl { color:#1e88e5; font-weight:700; }
 
-/* ── フィルターバー ── */
-#filter-bar {
-  position:fixed; top:96px; left:0; right:0; z-index:498;
-  background:#f8f9fa; padding:7px 12px;
-  display:flex; gap:6px; overflow-x:auto; align-items:center;
-  border-bottom:1px solid #e0e0e0; height:42px;
-  -webkit-overflow-scrolling:touch;
+/* ── 絞込ボタン（検索バー内） ── */
+#filter-btn {
+  flex-shrink:0; background:#f5f5f5; border:1.5px solid #ddd; border-radius:20px;
+  padding:0 12px; font-size:13px; font-weight:600; cursor:pointer;
+  color:#444; display:flex; align-items:center; gap:5px; height:32px;
 }
-#filter-bar::-webkit-scrollbar { display:none; }
-.filter-section { display:flex; gap:5px; align-items:center; flex-shrink:0; }
-.filter-divider { width:1px; height:22px; background:#ddd; margin:0 4px; flex-shrink:0; }
+#filter-btn.active { background:#e3f2fd; border-color:#1e88e5; color:#1e88e5; }
+#filter-btn:active { opacity:0.7; }
+#filter-badge {
+  display:none; background:#e53935; color:white; border-radius:50%;
+  width:17px; height:17px; font-size:10px; font-weight:700;
+  align-items:center; justify-content:center;
+}
+#filter-badge.show { display:flex; }
+
+/* ── フィルターシート ── */
+#filter-overlay {
+  display:none; position:fixed; inset:0; z-index:700; background:rgba(0,0,0,0.4);
+}
+#filter-overlay.open { display:block; }
+#filter-sheet {
+  position:fixed; bottom:0; left:0; right:0; z-index:701;
+  background:white; border-radius:20px 20px 0 0;
+  transform:translateY(100%); transition:transform 0.3s ease;
+  max-height:80vh; overflow-y:auto;
+  padding-bottom:env(safe-area-inset-bottom,16px);
+}
+#filter-sheet.open { transform:translateY(0); }
+#filter-sheet-header {
+  display:flex; align-items:center; padding:14px 16px 12px;
+  border-bottom:1px solid #f0f0f0; position:sticky; top:0; background:white; z-index:1;
+}
+#filter-sheet-title { flex:1; font-size:15px; font-weight:700; }
+#filter-reset-btn {
+  font-size:13px; color:#1e88e5; background:none; border:none;
+  padding:4px 10px; cursor:pointer; font-weight:600;
+}
+#filter-close-btn {
+  width:30px; height:30px; border-radius:50%; background:#f5f5f5; border:none;
+  cursor:pointer; font-size:16px; color:#555;
+  display:flex; align-items:center; justify-content:center;
+}
+.fs-group { padding:14px 16px 6px; }
+.fs-group + .fs-group { border-top:1px solid #f5f5f5; }
+.fs-label { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.fs-row { display:flex; flex-wrap:wrap; gap:7px; }
+.fs-mylist { color:#f9a825 !important; border-color:#f9a825 !important; }
+.fs-mylist.active { background:#f9a825 !important; color:white !important; }
 .fbtn {
   flex-shrink:0; padding:3px 11px; border-radius:14px;
   border:1.5px solid #ccc; font-size:11px; font-weight:600;
@@ -105,9 +142,19 @@ body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
 
 /* ── 地図 ── */
 #map {
-  position:fixed; top:138px; bottom:0; left:0; right:0;
-  width:100%; height:calc(100vh - 138px); z-index:1;
+  position:fixed; top:96px; bottom:0; left:0; right:0;
+  width:100%; height:calc(100vh - 96px); z-index:1;
 }
+
+/* ── マイリストボタン（パネルヘッダー） ── */
+#mylist-btn {
+  flex-shrink:0; width:32px; height:32px; border-radius:50%;
+  background:#f5f5f5; border:none; cursor:pointer;
+  font-size:20px; line-height:1; color:#ccc;
+  display:flex; align-items:center; justify-content:center; margin-top:-2px;
+  transition:all 0.15s;
+}
+#mylist-btn.active { color:#f9a825; background:#fff8e1; }
 
 /* ── ピンアイコン ── */
 .pin-icon {
@@ -304,37 +351,59 @@ textarea.field-input { resize:vertical; min-height:80px; }
     <div id="suggest-list"></div>
   </div>
   <button id="search-btn">検索</button>
+  <button id="filter-btn">⚙ 絞込<span id="filter-badge"></span></button>
 </div>
 
-<!-- フィルターバー -->
-<div id="filter-bar">
-  <div class="filter-section">
-    <div class="fbtn active" data-score="すべて">すべて</div>
-    <div class="fbtn" data-score="高">高</div>
-    <div class="fbtn" data-score="中">中</div>
-    <div class="fbtn" data-score="低">低</div>
+<!-- フィルターシート -->
+<div id="filter-overlay"></div>
+<div id="filter-sheet">
+  <div id="filter-sheet-header">
+    <span id="filter-sheet-title">絞り込み</span>
+    <button id="filter-reset-btn">リセット</button>
+    <button id="filter-close-btn">✕</button>
   </div>
-  <div class="filter-divider"></div>
-  <div class="filter-section">
-    <div class="fbtn active" data-status="すべて">全状況</div>
-    <div class="fbtn" data-status="未訪問">未訪問</div>
-    <div class="fbtn" data-status="再アプローチ必要">再AP</div>
-    <div class="fbtn" data-status="訪問済み">訪問済</div>
+  <div class="fs-group">
+    <div class="fs-label">マイリスト</div>
+    <div class="fs-row">
+      <div class="fbtn fs-mylist" id="fs-mylist-btn" data-mylist="1">★ マイリストのみ表示</div>
+    </div>
   </div>
-  <div class="filter-divider"></div>
-  <div class="filter-section">
-    <div class="fbtn active" data-cust="すべて">全種別</div>
-    <div class="fbtn" data-cust="顧客">顧客</div>
-    <div class="fbtn" data-cust="新規">新規</div>
+  <div class="fs-group">
+    <div class="fs-label">見込み度</div>
+    <div class="fs-row">
+      <div class="fbtn active" data-score="すべて">すべて</div>
+      <div class="fbtn" data-score="高">高</div>
+      <div class="fbtn" data-score="中">中</div>
+      <div class="fbtn" data-score="低">低</div>
+    </div>
   </div>
-  <div class="filter-divider"></div>
-  <div class="filter-section">
-    <div class="fbtn active" data-prod="すべて">全商材</div>
-    <div class="fbtn" data-prod="bf">BF</div>
-    <div class="fbtn" data-prod="mfp">複合機</div>
-    <div class="fbtn" data-prod="utm">UTM</div>
-    <div class="fbtn" data-prod="hub">HUB</div>
-    <div class="fbtn" data-prod="srv">サーバー</div>
+  <div class="fs-group">
+    <div class="fs-label">訪問状況</div>
+    <div class="fs-row">
+      <div class="fbtn active" data-status="すべて">全状況</div>
+      <div class="fbtn" data-status="未訪問">未訪問</div>
+      <div class="fbtn" data-status="再アプローチ必要">再AP</div>
+      <div class="fbtn" data-status="訪問済み">訪問済</div>
+    </div>
+  </div>
+  <div class="fs-group">
+    <div class="fs-label">種別</div>
+    <div class="fs-row">
+      <div class="fbtn active" data-cust="すべて">全種別</div>
+      <div class="fbtn" data-cust="顧客">顧客</div>
+      <div class="fbtn" data-cust="新規">新規</div>
+    </div>
+  </div>
+  <div class="fs-group">
+    <div class="fs-label">商材</div>
+    <div class="fs-row">
+      <div class="fbtn active" data-prod="すべて">全商材</div>
+      <div class="fbtn" data-prod="bf">BF</div>
+      <div class="fbtn" data-prod="mfp">複合機</div>
+      <div class="fbtn" data-prod="utm">UTM</div>
+      <div class="fbtn" data-prod="hub">HUB</div>
+      <div class="fbtn" data-prod="srv">サーバー</div>
+    </div>
   </div>
 </div>
 
@@ -355,9 +424,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
   <div id="panel-header">
     <div id="panel-drag"></div>
 
-    <!-- タイトル行：会社名 + ✕ボタン -->
+    <!-- タイトル行：会社名 + マイリスト + ✕ボタン -->
     <div id="panel-title-row">
       <div id="panel-title">会社名</div>
+      <button id="mylist-btn" title="マイリストに追加">☆</button>
       <button id="close-btn">✕</button>
     </div>
 
@@ -914,7 +984,7 @@ function handleAuthError() {
 let map, clusterGroup;
 let allPoints  = [];
 let allMarkers = {};
-const CACHE_KEY_POINTS  = 'nexia_points_v2'; // v2: 商材フラグ追加
+const CACHE_KEY_POINTS  = 'nexia_points_v3'; // v3: マイリスト追加
 const CACHE_KEY_DETAILS = 'nexia_details_v2';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6時間
 
@@ -941,6 +1011,7 @@ let filterScore   = 'すべて';
 let filterStatus  = 'すべて';
 let filterCust    = 'すべて';
 let filterProduct = 'すべて';
+let filterMyList  = false;
 let gpsMarker = null, gpsCircle = null, gpsHeading = null, mapBearing = 0;
 
 // ════════════════════════════════════════════════════════
@@ -1103,7 +1174,8 @@ function applyFilter(points) {
                   || (filterProduct === 'utm' && pt.utm === 'あり')
                   || (filterProduct === 'hub' && pt.hub === 'あり')
                   || (filterProduct === 'srv' && pt.srv === 'あり');
-    return scoreOk && statusOk && custOk && prodOk;
+    const mlOk     = !filterMyList || pt.ml === '◯';
+    return scoreOk && statusOk && custOk && prodOk && mlOk;
   });
 }
 
@@ -1116,6 +1188,10 @@ function openPinDetail(pt) {
   // ── 即座にパネルを開いて基本情報を表示（待ち時間ゼロ）──
   document.getElementById('panel-title').textContent    = pt.n || '読み込み中...';
   document.getElementById('panel-subtitle').textContent = '';
+  // マイリストボタン状態
+  const mlBtn = document.getElementById('mylist-btn');
+  mlBtn.textContent = pt.ml === '◯' ? '★' : '☆';
+  mlBtn.classList.toggle('active', pt.ml === '◯');
 
   // GMBボタン（place_idはallPointsにある）
   const gmbBtn = document.getElementById('gmb-btn');
@@ -1566,28 +1642,96 @@ function switchTab(name) {
 // ════════════════════════════════════════════════════════
 // フィルター
 // ════════════════════════════════════════════════════════
+function updateFilterBadge() {
+  let count = 0;
+  if (filterScore   !== 'すべて') count++;
+  if (filterStatus  !== 'すべて') count++;
+  if (filterCust    !== 'すべて') count++;
+  if (filterProduct !== 'すべて') count++;
+  if (filterMyList) count++;
+  const badge = document.getElementById('filter-badge');
+  const btn   = document.getElementById('filter-btn');
+  if (count > 0) {
+    badge.textContent = count; badge.classList.add('show');
+    btn.classList.add('active');
+  } else {
+    badge.classList.remove('show');
+    btn.classList.remove('active');
+  }
+}
+
+function openFilterSheet() {
+  document.getElementById('filter-sheet').classList.add('open');
+  document.getElementById('filter-overlay').classList.add('open');
+}
+
+function closeFilterSheet() {
+  document.getElementById('filter-sheet').classList.remove('open');
+  document.getElementById('filter-overlay').classList.remove('open');
+}
+
+function resetFilters() {
+  setScoreFilter('すべて');
+  setStatusFilter('すべて');
+  setCustFilter('すべて');
+  setProductFilter('すべて');
+  filterMyList = false;
+  document.getElementById('fs-mylist-btn').classList.remove('active');
+  updateFilterBadge();
+}
+
 function setScoreFilter(score) {
   filterScore = score;
   document.querySelectorAll('.fbtn[data-score]').forEach(b => b.classList.toggle('active', b.dataset.score === score));
+  updateFilterBadge();
   renderMarkers();
 }
 
 function setStatusFilter(status) {
   filterStatus = status;
   document.querySelectorAll('.fbtn[data-status]').forEach(b => b.classList.toggle('active', b.dataset.status === status));
+  updateFilterBadge();
   renderMarkers();
 }
 
 function setCustFilter(cust) {
   filterCust = cust;
   document.querySelectorAll('.fbtn[data-cust]').forEach(b => b.classList.toggle('active', b.dataset.cust === cust));
+  updateFilterBadge();
   renderMarkers();
 }
 
 function setProductFilter(prod) {
   filterProduct = prod;
   document.querySelectorAll('.fbtn[data-prod]').forEach(b => b.classList.toggle('active', b.dataset.prod === prod));
+  updateFilterBadge();
   renderMarkers();
+}
+
+function toggleMyListFilter() {
+  filterMyList = !filterMyList;
+  document.getElementById('fs-mylist-btn').classList.toggle('active', filterMyList);
+  updateFilterBadge();
+  renderMarkers();
+}
+
+// パネルのマイリストボタン：スプレッドシートに即時保存
+function toggleMyListForCurrent() {
+  if (!currentRow) return;
+  const pt = allPoints.find(p => p.r === currentRow);
+  if (!pt) return;
+  const newVal = pt.ml === '◯' ? '' : '◯';
+  pt.ml = newVal;
+  const btn = document.getElementById('mylist-btn');
+  btn.textContent = newVal === '◯' ? '★' : '☆';
+  btn.classList.toggle('active', newVal === '◯');
+  if (detailCache[currentRow]) detailCache[currentRow]['マイリスト'] = newVal;
+  // スプレッドシートに保存
+  const url = gasUrl('action=update&row=' + currentRow
+    + '&data=' + encodeURIComponent(JSON.stringify({ 'マイリスト': newVal })));
+  jsonp(url, 20000)
+    .then(res => { if (res.success) showToast(newVal === '◯' ? '★ マイリストに追加しました' : 'マイリストから削除しました'); })
+    .catch(() => showToast('保存エラー'));
 }
 
 // ════════════════════════════════════════════════════════
@@ -1656,10 +1800,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
   }
 
-  document.getElementById('close-btn').onclick  = closePanel;
-  document.getElementById('save-btn').onclick   = saveDetail;
-  document.getElementById('gps-btn').onclick    = flyToGPS;
-  document.getElementById('search-btn').onclick = searchCompany;
+  document.getElementById('close-btn').onclick       = closePanel;
+  document.getElementById('save-btn').onclick         = saveDetail;
+  document.getElementById('gps-btn').onclick          = flyToGPS;
+  document.getElementById('search-btn').onclick       = searchCompany;
+  document.getElementById('filter-btn').onclick       = openFilterSheet;
+  document.getElementById('filter-close-btn').onclick = closeFilterSheet;
+  document.getElementById('filter-reset-btn').onclick = resetFilters;
+  document.getElementById('filter-overlay').onclick   = closeFilterSheet;
+  document.getElementById('mylist-btn').onclick       = toggleMyListForCurrent;
+  document.getElementById('fs-mylist-btn').onclick    = toggleMyListFilter;
 
   const inp = document.getElementById('search-input');
   inp.addEventListener('input',  updateSuggest);
@@ -1674,7 +1824,7 @@ document.addEventListener('DOMContentLoaded', () => {
     t.onclick = () => switchTab(t.dataset.tab);
   });
 
-  // フィルター
+  // フィルターシート内のボタン
   document.querySelectorAll('.fbtn[data-score]').forEach(b => {
     b.onclick = () => setScoreFilter(b.dataset.score);
   });
