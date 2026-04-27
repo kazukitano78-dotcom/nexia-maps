@@ -1634,7 +1634,10 @@ function setScoreBadge(id, v) {
 
 function toDateInput(v) {
   if (!v) return '';
-  return v.replace(/\//g, '-').substring(0, 10);
+  // yyyy/M/d または yyyy-M-d 形式（ゼロパディングなし）を yyyy-MM-dd に正規化
+  const m = String(v).match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return '';
 }
 
 // ════════════════════════════════════════════════════════
