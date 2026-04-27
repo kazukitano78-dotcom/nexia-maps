@@ -941,7 +941,7 @@ let filterScore   = 'すべて';
 let filterStatus  = 'すべて';
 let filterCust    = 'すべて';
 let filterProduct = 'すべて';
-let gpsMarker = null, gpsCircle = null, gpsHeading = null;
+let gpsMarker = null, gpsCircle = null, gpsHeading = null, mapBearing = 0;
 
 // ════════════════════════════════════════════════════════
 // 地図初期化
@@ -971,8 +971,12 @@ function initMap() {
   });
   map.addLayer(clusterGroup);
 
-  // 地図が回転したらGPSコーンの向きを再計算
-  map.on('rotate', () => updateGpsCone(null));
+  // 地図が回転したらGPSコーンの向きを再計算（bearingをイベントから直接取得）
+  map.on('rotate', e => {
+    mapBearing = typeof e.bearing === 'number' ? e.bearing
+               : (map.getBearing ? map.getBearing() : 0);
+    updateGpsCone(null);
+  });
 
   initGPS();
   loadMapPoints();
@@ -1483,9 +1487,8 @@ function updateGpsCone(heading) {
   if (heading != null) gpsHeading = heading;
   const H = gpsHeading;
   if (H == null) return;
-  const B = (map && map.getBearing) ? map.getBearing() : 0;
   const el = document.getElementById('gps-dir');
-  if (el) el.style.transform = `rotate(${H - B}deg)`;
+  if (el) el.style.transform = `rotate(${H - mapBearing}deg)`;
 }
 
 // デバイス方位のリスナーを登録
@@ -1495,10 +1498,9 @@ function startOrientationWatch() {
     if (typeof e.webkitCompassHeading === 'number') {
       h = e.webkitCompassHeading;               // iOS
     } else if (e.absolute && e.alpha != null) {
-      h = (360 - e.alpha + 360) % 360;          // Android（絶対方位）
-    } else if (!e.absolute && e.alpha != null) {
-      h = (360 - e.alpha + 360) % 360;          // Androidフォールバック
+      h = (360 - e.alpha + 360) % 360;          // Android（絶対方位のみ使用）
     }
+    // e.absolute=false は北基準でないため使わない
     if (h != null) updateGpsCone(h);
   };
   window.addEventListener('deviceorientationabsolute', handler, true);
