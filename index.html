@@ -971,6 +971,9 @@ function initMap() {
   });
   map.addLayer(clusterGroup);
 
+  // 地図が回転したらGPSコーンの向きを再計算
+  map.on('rotate', () => updateGpsCone(null));
+
   initGPS();
   loadMapPoints();
 }
@@ -1475,11 +1478,14 @@ function makeGpsIcon() {
   });
 }
 
-// コーンを方位角で回す
+// コーンを方位角で回す（地図のbearing分を補正して画面上の絶対方向を維持）
 function updateGpsCone(heading) {
-  gpsHeading = heading;
+  if (heading != null) gpsHeading = heading;
+  const H = gpsHeading;
+  if (H == null) return;
+  const B = (map && map.getBearing) ? map.getBearing() : 0;
   const el = document.getElementById('gps-dir');
-  if (el) el.style.transform = `rotate(${heading}deg)`;
+  if (el) el.style.transform = `rotate(${H - B}deg)`;
 }
 
 // デバイス方位のリスナーを登録
