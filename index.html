@@ -1052,11 +1052,11 @@ function prefetchAllDetails() {
 // マーカー描画
 // ════════════════════════════════════════════════════════
 function pinColor(point) {
-  if (point.cust === '顧客') return '#f9a825'; // 金色（顧客）
   const f = point.f || '';
-  if (f === '訪問済み')         return '#757575';
-  if (f === '再アプローチ必要') return '#f57c00';
-  return '#1e88e5';
+  if (f === '訪問済み')         return '#757575';        // グレー（訪問済み優先）
+  if (f === '再アプローチ必要') return '#f57c00';        // オレンジ
+  if (point.cust === '顧客')   return '#f9a825';        // 金色（顧客・未訪問）
+  return '#1e88e5';                                      // 青（新規・未訪問）
 }
 
 function renderMarkers() {
