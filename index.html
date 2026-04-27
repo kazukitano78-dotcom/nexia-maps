@@ -100,6 +100,7 @@ body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
 .fbtn[data-cust="顧客"].active   { background:#f9a825; }
 .fbtn[data-cust="新規"].active   { background:#1e88e5; }
 .fbtn[data-cust="すべて"].active { background:#546e7a; }
+.fbtn[data-prod].active { background:#7b1fa2; }
 
 /* ── 地図 ── */
 #map {
@@ -320,6 +321,15 @@ textarea.field-input { resize:vertical; min-height:80px; }
     <div class="fbtn" data-cust="顧客">顧客</div>
     <div class="fbtn" data-cust="新規">新規</div>
   </div>
+  <div class="filter-divider"></div>
+  <div class="filter-section">
+    <div class="fbtn active" data-prod="すべて">全商材</div>
+    <div class="fbtn" data-prod="bf">BF</div>
+    <div class="fbtn" data-prod="mfp">複合機</div>
+    <div class="fbtn" data-prod="utm">UTM</div>
+    <div class="fbtn" data-prod="hub">HUB</div>
+    <div class="fbtn" data-prod="srv">サーバー</div>
+  </div>
 </div>
 
 <!-- 地図 -->
@@ -509,6 +519,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-bf-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -551,6 +565,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-mfp-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -593,6 +611,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-utm-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -635,6 +657,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-hub-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -677,6 +703,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-srv-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -723,6 +753,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-ot1-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -769,6 +803,10 @@ textarea.field-input { resize:vertical; min-height:80px; }
         </div>
       </div>
       <div class="section-title">リース情報</div>
+      <div class="field-group">
+        <div class="field-label">契約開始時期</div>
+        <input class="field-input" type="date" id="f-ot2-start">
+      </div>
       <div class="row2">
         <div class="field-group">
           <div class="field-label">リース年数</div>
@@ -893,9 +931,10 @@ function cacheClear() {
 let detailCache = cacheLoad(CACHE_KEY_DETAILS) || {};  // row → 詳細データ（localStorage復元）
 let currentRow = null;
 let activeTab  = 'info';
-let filterScore  = 'すべて';
-let filterStatus = 'すべて';
-let filterCust   = 'すべて';
+let filterScore   = 'すべて';
+let filterStatus  = 'すべて';
+let filterCust    = 'すべて';
+let filterProduct = 'すべて';
 let gpsMarker = null, gpsCircle = null;
 
 // ════════════════════════════════════════════════════════
@@ -1040,7 +1079,13 @@ function applyFilter(points) {
     const statusOk = filterStatus === 'すべて' || pt.f    === filterStatus;
     const custOk   = filterCust   === 'すべて' || pt.cust === filterCust
                   || (filterCust === '新規' && !pt.cust);
-    return scoreOk && statusOk && custOk;
+    const prodOk   = filterProduct === 'すべて'
+                  || (filterProduct === 'bf'  && pt.bf  === 'あり')
+                  || (filterProduct === 'mfp' && pt.mfp === 'あり')
+                  || (filterProduct === 'utm' && pt.utm === 'あり')
+                  || (filterProduct === 'hub' && pt.hub === 'あり')
+                  || (filterProduct === 'srv' && pt.srv === 'あり');
+    return scoreOk && statusOk && custOk && prodOk;
   });
 }
 
@@ -1149,28 +1194,31 @@ function populatePanel(d) {
   setSelect('f-score',    d['見込み度']);
 
   // ビジネスフォン
-  setSelect('f-bf',      d['ビジネスフォン']);
-  setInput('f-bf-co',    d['BF設置会社']);
-  setInput('f-bf-maker', d['BFメーカー']);
-  setInput('f-bf-model', d['BF型番']);
-  setInput('f-bf-years', d['BFリース年数']);
-  setInput('f-bf-end',   toDateInput(d['BFリース満了日']));
-  setInput('f-bf-price', d['BFリース料金']);
+  setSelect('f-bf',       d['ビジネスフォン']);
+  setInput('f-bf-co',     d['BF設置会社']);
+  setInput('f-bf-maker',  d['BFメーカー']);
+  setInput('f-bf-model',  d['BF型番']);
+  setInput('f-bf-start',  toDateInput(d['BF契約開始時期']));
+  setInput('f-bf-years',  d['BFリース年数']);
+  setInput('f-bf-end',    toDateInput(d['BFリース満了日']));
+  setInput('f-bf-price',  d['BFリース料金']);
 
   // 複合機
-  setSelect('f-mfp',      d['複合機利用']);
-  setInput('f-mfp-co',    d['複合機設置会社']);
-  setInput('f-mfp-maker', d['複合機メーカー']);
-  setInput('f-mfp-model', d['複合機型番']);
-  setInput('f-mfp-years', d['複合機リース年数']);
-  setInput('f-mfp-end',   toDateInput(d['複合機リース満了日']));
-  setInput('f-mfp-price', d['複合機リース料金']);
+  setSelect('f-mfp',       d['複合機利用']);
+  setInput('f-mfp-co',     d['複合機設置会社']);
+  setInput('f-mfp-maker',  d['複合機メーカー']);
+  setInput('f-mfp-model',  d['複合機型番']);
+  setInput('f-mfp-start',  toDateInput(d['複合機契約開始時期']));
+  setInput('f-mfp-years',  d['複合機リース年数']);
+  setInput('f-mfp-end',    toDateInput(d['複合機リース満了日']));
+  setInput('f-mfp-price',  d['複合機リース料金']);
 
   // UTM
   setSelect('f-utm',       d['UTM利用']);
   setInput('f-utm-co',     d['UTM設置会社']);
   setInput('f-utm-maker',  d['UTMメーカー']);
   setInput('f-utm-model',  d['UTM型番']);
+  setInput('f-utm-start',  toDateInput(d['UTM契約開始時期']));
   setInput('f-utm-years',  d['UTMリース年数']);
   setInput('f-utm-end',    toDateInput(d['UTMリース満了日']));
   setInput('f-utm-price',  d['UTMリース料金']);
@@ -1180,6 +1228,7 @@ function populatePanel(d) {
   setInput('f-hub-co',     d['HUB設置会社']);
   setInput('f-hub-maker',  d['HUBメーカー']);
   setInput('f-hub-model',  d['HUB型番']);
+  setInput('f-hub-start',  toDateInput(d['HUB契約開始時期']));
   setInput('f-hub-years',  d['HUBリース年数']);
   setInput('f-hub-end',    toDateInput(d['HUBリース満了日']));
   setInput('f-hub-price',  d['HUBリース料金']);
@@ -1189,6 +1238,7 @@ function populatePanel(d) {
   setInput('f-srv-co',     d['サーバー設置会社']);
   setInput('f-srv-maker',  d['サーバーメーカー']);
   setInput('f-srv-model',  d['サーバー型番']);
+  setInput('f-srv-start',  toDateInput(d['サーバー契約開始時期']));
   setInput('f-srv-years',  d['サーバーリース年数']);
   setInput('f-srv-end',    toDateInput(d['サーバーリース満了日']));
   setInput('f-srv-price',  d['サーバーリース料金']);
@@ -1199,6 +1249,7 @@ function populatePanel(d) {
   setInput('f-ot1-co',     d['その他１設置会社']);
   setInput('f-ot1-maker',  d['その他１メーカー']);
   setInput('f-ot1-model',  d['その他１型番']);
+  setInput('f-ot1-start',  toDateInput(d['その他１契約開始時期']));
   setInput('f-ot1-years',  d['その他１リース年数']);
   setInput('f-ot1-end',    toDateInput(d['その他１リース満了日']));
   setInput('f-ot1-price',  d['その他１リース料金']);
@@ -1209,6 +1260,7 @@ function populatePanel(d) {
   setInput('f-ot2-co',     d['その他２設置会社']);
   setInput('f-ot2-maker',  d['その他２メーカー']);
   setInput('f-ot2-model',  d['その他２型番']);
+  setInput('f-ot2-start',  toDateInput(d['その他２契約開始時期']));
   setInput('f-ot2-years',  d['その他２リース年数']);
   setInput('f-ot2-end',    toDateInput(d['その他２リース満了日']));
   setInput('f-ot2-price',  d['その他２リース料金']);
@@ -1235,46 +1287,52 @@ function saveDetail() {
     '社長の在社時間':   val('f-president'),
     '訪問結果':         val('f-result'),
     '見込み度':         val('f-score'),
-    'ビジネスフォン':   val('f-bf'),
-    'BF設置会社':       val('f-bf-co'),
-    'BFメーカー':       val('f-bf-maker'),
-    'BF型番':           val('f-bf-model'),
-    'BFリース年数':     val('f-bf-years'),
-    'BFリース満了日':   val('f-bf-end'),
-    'BFリース料金':     val('f-bf-price'),
-    '複合機利用':       val('f-mfp'),
-    '複合機設置会社':   val('f-mfp-co'),
-    '複合機メーカー':   val('f-mfp-maker'),
-    '複合機型番':       val('f-mfp-model'),
-    '複合機リース年数': val('f-mfp-years'),
-    '複合機リース満了日': val('f-mfp-end'),
-    '複合機リース料金': val('f-mfp-price'),
-    'UTM利用':          val('f-utm'),
-    'UTM設置会社':      val('f-utm-co'),
-    'UTMメーカー':      val('f-utm-maker'),
-    'UTM型番':          val('f-utm-model'),
-    'UTMリース年数':    val('f-utm-years'),
-    'UTMリース満了日':  val('f-utm-end'),
-    'UTMリース料金':    val('f-utm-price'),
-    'HUB利用':          val('f-hub'),
-    'HUB設置会社':      val('f-hub-co'),
-    'HUBメーカー':      val('f-hub-maker'),
-    'HUB型番':          val('f-hub-model'),
-    'HUBリース年数':    val('f-hub-years'),
-    'HUBリース満了日':  val('f-hub-end'),
-    'HUBリース料金':    val('f-hub-price'),
-    'サーバー利用':          val('f-srv'),
-    'サーバー設置会社':      val('f-srv-co'),
-    'サーバーメーカー':      val('f-srv-maker'),
-    'サーバー型番':          val('f-srv-model'),
-    'サーバーリース年数':    val('f-srv-years'),
-    'サーバーリース満了日':  val('f-srv-end'),
-    'サーバーリース料金':    val('f-srv-price'),
+    'ビジネスフォン':      val('f-bf'),
+    'BF設置会社':          val('f-bf-co'),
+    'BFメーカー':          val('f-bf-maker'),
+    'BF型番':              val('f-bf-model'),
+    'BF契約開始時期':      val('f-bf-start'),
+    'BFリース年数':        val('f-bf-years'),
+    'BFリース満了日':      val('f-bf-end'),
+    'BFリース料金':        val('f-bf-price'),
+    '複合機利用':          val('f-mfp'),
+    '複合機設置会社':      val('f-mfp-co'),
+    '複合機メーカー':      val('f-mfp-maker'),
+    '複合機型番':          val('f-mfp-model'),
+    '複合機契約開始時期':  val('f-mfp-start'),
+    '複合機リース年数':    val('f-mfp-years'),
+    '複合機リース満了日':  val('f-mfp-end'),
+    '複合機リース料金':    val('f-mfp-price'),
+    'UTM利用':             val('f-utm'),
+    'UTM設置会社':         val('f-utm-co'),
+    'UTMメーカー':         val('f-utm-maker'),
+    'UTM型番':             val('f-utm-model'),
+    'UTM契約開始時期':     val('f-utm-start'),
+    'UTMリース年数':       val('f-utm-years'),
+    'UTMリース満了日':     val('f-utm-end'),
+    'UTMリース料金':       val('f-utm-price'),
+    'HUB利用':             val('f-hub'),
+    'HUB設置会社':         val('f-hub-co'),
+    'HUBメーカー':         val('f-hub-maker'),
+    'HUB型番':             val('f-hub-model'),
+    'HUB契約開始時期':     val('f-hub-start'),
+    'HUBリース年数':       val('f-hub-years'),
+    'HUBリース満了日':     val('f-hub-end'),
+    'HUBリース料金':       val('f-hub-price'),
+    'サーバー利用':        val('f-srv'),
+    'サーバー設置会社':    val('f-srv-co'),
+    'サーバーメーカー':    val('f-srv-maker'),
+    'サーバー型番':        val('f-srv-model'),
+    'サーバー契約開始時期': val('f-srv-start'),
+    'サーバーリース年数':  val('f-srv-years'),
+    'サーバーリース満了日': val('f-srv-end'),
+    'サーバーリース料金':  val('f-srv-price'),
     'その他１商材名':        val('f-ot1-name'),
     'その他１利用':          val('f-ot1'),
     'その他１設置会社':      val('f-ot1-co'),
     'その他１メーカー':      val('f-ot1-maker'),
     'その他１型番':          val('f-ot1-model'),
+    'その他１契約開始時期':  val('f-ot1-start'),
     'その他１リース年数':    val('f-ot1-years'),
     'その他１リース満了日':  val('f-ot1-end'),
     'その他１リース料金':    val('f-ot1-price'),
@@ -1283,6 +1341,7 @@ function saveDetail() {
     'その他２設置会社':      val('f-ot2-co'),
     'その他２メーカー':      val('f-ot2-maker'),
     'その他２型番':          val('f-ot2-model'),
+    'その他２契約開始時期':  val('f-ot2-start'),
     'その他２リース年数':    val('f-ot2-years'),
     'その他２リース満了日':  val('f-ot2-end'),
     'その他２リース料金':    val('f-ot2-price'),
@@ -1446,6 +1505,12 @@ function setCustFilter(cust) {
   renderMarkers();
 }
 
+function setProductFilter(prod) {
+  filterProduct = prod;
+  document.querySelectorAll('.fbtn[data-prod]').forEach(b => b.classList.toggle('active', b.dataset.prod === prod));
+  renderMarkers();
+}
+
 // ════════════════════════════════════════════════════════
 // UI ユーティリティ
 // ════════════════════════════════════════════════════════
@@ -1533,11 +1598,41 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.fbtn[data-cust]').forEach(b => {
     b.onclick = () => setCustFilter(b.dataset.cust);
   });
+  document.querySelectorAll('.fbtn[data-prod]').forEach(b => {
+    b.onclick = () => setProductFilter(b.dataset.prod);
+  });
 
   // 地図クリックでパネルを閉じる
   document.getElementById('map').addEventListener('click', e => {
     if (!e.target.closest('.leaflet-marker-icon')) closePanel();
   });
+
+  // ── スワイプダウンでパネルを閉じる ──
+  let _swipeStartY = 0;
+  let _swipeStartScrollTop = 0;
+  const _panelEl = document.getElementById('panel');
+  const _panelHdr = document.getElementById('panel-header');
+  const _tabContent = document.getElementById('tab-content');
+
+  _panelHdr.addEventListener('touchstart', e => {
+    _swipeStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  _panelHdr.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - _swipeStartY;
+    if (dy > 60) closePanel();
+  }, { passive: true });
+
+  // コンテンツ部分：スクロール最上部でスワイプダウンしたときも閉じる
+  _tabContent.addEventListener('touchstart', e => {
+    _swipeStartY = e.touches[0].clientY;
+    _swipeStartScrollTop = _tabContent.scrollTop;
+  }, { passive: true });
+
+  _tabContent.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - _swipeStartY;
+    if (dy > 80 && _swipeStartScrollTop === 0) closePanel();
+  }, { passive: true });
 });
 </script>
 

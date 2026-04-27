@@ -1,0 +1,37 @@
+// ════════════════════════════════════════════════════════════════
+// 契約開始時期列をシート1に追加
+// ════════════════════════════════════════════════════════════════
+// 【使い方】 addKeiyakuColumns() を実行するだけ
+// ════════════════════════════════════════════════════════════════
+
+function addKeiyakuColumns() {
+  const ss    = SpreadsheetApp.openById('1gcD6NIxH3U7f4srEIrCtgQavV7-qAct_U7H3wwQXHMw');
+  const sheet = ss.getSheetByName('シート1') || ss.getSheets()[0];
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+
+  const newCols = [
+    'BF契約開始時期',
+    '複合機契約開始時期',
+    'UTM契約開始時期',
+    'HUB契約開始時期',
+    'サーバー契約開始時期',
+    'その他１契約開始時期',
+    'その他２契約開始時期',
+  ];
+
+  let added = [];
+  newCols.forEach(colName => {
+    if (headers.indexOf(colName) === -1) {
+      const newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue(colName)
+        .setFontWeight('bold').setBackground('#e8f0fe');
+      added.push(colName);
+    }
+  });
+
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert(added.length > 0
+    ? '✅ ' + added.length + '列を追加しました:\n' + added.join('\n')
+    : 'ℹ️ 既に全列が存在します');
+}
