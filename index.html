@@ -119,7 +119,46 @@ body { font-family:'Hiragino Sans','Yu Gothic',sans-serif; background:#f0f2f5; }
 .fs-label { font-size:11px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
 .fs-row { display:flex; flex-wrap:wrap; gap:7px; }
 .fs-mylist { color:#f9a825 !important; border-color:#f9a825 !important; }
-.fs-mylist.active { background:#f9a825 !important; color:white !important; }
+.fs-mylist.active { background:#f9a825 !important; color:white !important; border-color:transparent !important; }
+
+/* ── マイリスト編集モーダル ── */
+#ml-modal-overlay {
+  position:fixed; inset:0; z-index:800; background:rgba(0,0,0,0.5);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+#ml-modal-overlay.hidden { display:none; }
+#ml-modal {
+  background:white; border-radius:16px; width:100%; max-width:320px;
+  padding:20px; box-shadow:0 8px 32px rgba(0,0,0,0.3); max-height:80vh; overflow-y:auto;
+}
+#ml-modal-title { font-size:15px; font-weight:700; margin-bottom:14px; color:#1a1a1a; }
+#ml-modal-empty { font-size:13px; color:#aaa; padding:8px 0; }
+.ml-check-item {
+  display:flex; align-items:center; gap:10px; padding:10px 0;
+  border-bottom:1px solid #f5f5f5; cursor:pointer;
+}
+.ml-check-item:last-child { border-bottom:none; }
+.ml-check-item input[type=checkbox] { width:18px; height:18px; flex-shrink:0; cursor:pointer; }
+.ml-check-item label { font-size:14px; color:#1a1a1a; flex:1; cursor:pointer; }
+#ml-modal-new { display:flex; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid #f0f0f0; }
+#ml-new-input {
+  flex:1; padding:8px 12px; border:1px solid #e0e0e0; border-radius:8px;
+  font-size:13px; font-family:inherit; outline:none;
+}
+#ml-new-input:focus { border-color:#1e88e5; }
+#ml-new-add-btn {
+  background:#e3f2fd; color:#1e88e5; border:none; border-radius:8px;
+  padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0;
+}
+#ml-modal-actions { display:flex; gap:8px; margin-top:16px; }
+#ml-modal-cancel {
+  flex:1; background:#f5f5f5; border:none; border-radius:10px;
+  padding:12px; font-size:14px; cursor:pointer;
+}
+#ml-modal-save {
+  flex:2; background:linear-gradient(135deg,#1e88e5,#1565c0); color:white;
+  border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;
+}
 .fbtn {
   flex-shrink:0; padding:3px 11px; border-radius:14px;
   border:1.5px solid #ccc; font-size:11px; font-weight:600;
@@ -364,8 +403,8 @@ textarea.field-input { resize:vertical; min-height:80px; }
   </div>
   <div class="fs-group">
     <div class="fs-label">マイリスト</div>
-    <div class="fs-row">
-      <div class="fbtn fs-mylist" id="fs-mylist-btn" data-mylist="1">★ マイリストのみ表示</div>
+    <div class="fs-row" id="fs-mylist-row">
+      <span id="ml-filter-empty" style="font-size:12px;color:#aaa">まだリストがありません</span>
     </div>
   </div>
   <div class="fs-group">
@@ -418,6 +457,22 @@ textarea.field-input { resize:vertical; min-height:80px; }
 
 <!-- トースト -->
 <div id="toast"></div>
+
+<!-- マイリスト編集モーダル -->
+<div id="ml-modal-overlay" class="hidden">
+  <div id="ml-modal">
+    <div id="ml-modal-title">★ リストに追加・削除</div>
+    <div id="ml-check-list"></div>
+    <div id="ml-modal-new">
+      <input id="ml-new-input" type="text" placeholder="新しいリスト名を入力">
+      <button id="ml-new-add-btn">追加</button>
+    </div>
+    <div id="ml-modal-actions">
+      <button id="ml-modal-cancel">キャンセル</button>
+      <button id="ml-modal-save">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- 詳細パネル -->
 <div id="panel">
@@ -1011,7 +1066,7 @@ let filterScore   = 'すべて';
 let filterStatus  = 'すべて';
 let filterCust    = 'すべて';
 let filterProduct = 'すべて';
-let filterMyList  = false;
+let filterMyList  = null; // null=絞込なし、string=リスト名で絞込
 let gpsMarker = null, gpsCircle = null, gpsHeading = null, mapBearing = 0;
 
 // ════════════════════════════════════════════════════════
@@ -1174,7 +1229,7 @@ function applyFilter(points) {
                   || (filterProduct === 'utm' && pt.utm === 'あり')
                   || (filterProduct === 'hub' && pt.hub === 'あり')
                   || (filterProduct === 'srv' && pt.srv === 'あり');
-    const mlOk     = !filterMyList || pt.ml === '◯';
+    const mlOk     = !filterMyList || (pt.ml && pt.ml.split(',').map(s=>s.trim()).includes(filterMyList));
     return scoreOk && statusOk && custOk && prodOk && mlOk;
   });
 }
@@ -1190,8 +1245,9 @@ function openPinDetail(pt) {
   document.getElementById('panel-subtitle').textContent = '';
   // マイリストボタン状態
   const mlBtn = document.getElementById('mylist-btn');
-  mlBtn.textContent = pt.ml === '◯' ? '★' : '☆';
-  mlBtn.classList.toggle('active', pt.ml === '◯');
+  const hasML = pt.ml && pt.ml.trim().length > 0;
+  mlBtn.textContent = hasML ? '★' : '☆';
+  mlBtn.classList.toggle('active', !!hasML);
 
   // GMBボタン（place_idはallPointsにある）
   const gmbBtn = document.getElementById('gmb-btn');
@@ -1661,6 +1717,7 @@ function updateFilterBadge() {
 }
 
 function openFilterSheet() {
+  updateMyListFilterSection();
   document.getElementById('filter-sheet').classList.add('open');
   document.getElementById('filter-overlay').classList.add('open');
 }
@@ -1675,8 +1732,8 @@ function resetFilters() {
   setStatusFilter('すべて');
   setCustFilter('すべて');
   setProductFilter('すべて');
-  filterMyList = false;
-  document.getElementById('fs-mylist-btn').classList.remove('active');
+  filterMyList = null;
+  updateMyListFilterSection();
   updateFilterBadge();
 }
 
@@ -1708,29 +1765,99 @@ function setProductFilter(prod) {
   renderMarkers();
 }
 
-function toggleMyListFilter() {
-  filterMyList = !filterMyList;
-  document.getElementById('fs-mylist-btn').classList.toggle('active', filterMyList);
+// allPointsのml列から全リスト名を収集
+function getAllListNames() {
+  const names = new Set();
+  allPoints.forEach(pt => {
+    if (pt.ml) pt.ml.split(',').forEach(n => { const t = n.trim(); if (t) names.add(t); });
+  });
+  return [...names].sort();
+}
+
+// フィルターシートのマイリストセクションを動的更新
+function updateMyListFilterSection() {
+  const names = getAllListNames();
+  const row   = document.getElementById('fs-mylist-row');
+  const empty = document.getElementById('ml-filter-empty');
+  if (names.length === 0) {
+    row.innerHTML = '';
+    if (empty) { empty.style.display = ''; row.appendChild(empty); }
+    return;
+  }
+  row.innerHTML = names.map(n =>
+    `<div class="fbtn fs-mylist${filterMyList === n ? ' active' : ''}" data-listname="${n}">★ ${n}</div>`
+  ).join('');
+  row.querySelectorAll('.fbtn[data-listname]').forEach(b => {
+    b.onclick = () => setMyListFilter(b.dataset.listname);
+  });
+}
+
+function setMyListFilter(name) {
+  filterMyList = filterMyList === name ? null : name; // 同じものを押したら解除
+  updateMyListFilterSection();
   updateFilterBadge();
   renderMarkers();
 }
 
-// パネルのマイリストボタン：スプレッドシートに即時保存
-function toggleMyListForCurrent() {
+// ── マイリスト編集モーダル ──
+function openMyListModal() {
   if (!currentRow) return;
   const pt = allPoints.find(p => p.r === currentRow);
   if (!pt) return;
-  const newVal = pt.ml === '◯' ? '' : '◯';
-  pt.ml = newVal;
+  const currentLists = pt.ml ? pt.ml.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const allNames = getAllListNames();
+  // 現在のリストにあってallNamesにないものも表示
+  const merged = [...new Set([...allNames, ...currentLists])].sort();
+
+  const listEl = document.getElementById('ml-check-list');
+  if (merged.length === 0) {
+    listEl.innerHTML = '<div id="ml-modal-empty" style="font-size:13px;color:#aaa;padding:8px 0">まだリストがありません。下から新規作成してください。</div>';
+  } else {
+    listEl.innerHTML = merged.map(n => `
+      <div class="ml-check-item">
+        <input type="checkbox" id="mlc-${n}" value="${n}" ${currentLists.includes(n) ? 'checked' : ''}>
+        <label for="mlc-${n}">${n}</label>
+      </div>`).join('');
+  }
+  document.getElementById('ml-new-input').value = '';
+  document.getElementById('ml-modal-overlay').classList.remove('hidden');
+}
+
+function closeMyListModal() {
+  document.getElementById('ml-modal-overlay').classList.add('hidden');
+}
+
+function mlAddNewList() {
+  const input = document.getElementById('ml-new-input');
+  const name  = input.value.trim();
+  if (!name) return;
+  const listEl = document.getElementById('ml-check-list');
+  // 重複チェック
+  if (listEl.querySelector(`input[value="${name}"]`)) { input.value = ''; return; }
+  const item = document.createElement('div');
+  item.className = 'ml-check-item';
+  item.innerHTML = `<input type="checkbox" id="mlc-${name}" value="${name}" checked><label for="mlc-${name}">${name}</label>`;
+  listEl.appendChild(item);
+  input.value = '';
+}
+
+function saveMyListModal() {
+  if (!currentRow) return;
+  const checked = [...document.querySelectorAll('#ml-check-list input[type=checkbox]:checked')]
+    .map(c => c.value.trim()).filter(Boolean);
+  const newVal = checked.join(',');
+  const pt = allPoints.find(p => p.r === currentRow);
+  if (pt) pt.ml = newVal;
   const btn = document.getElementById('mylist-btn');
-  btn.textContent = newVal === '◯' ? '★' : '☆';
-  btn.classList.toggle('active', newVal === '◯');
+  btn.textContent = checked.length > 0 ? '★' : '☆';
+  btn.classList.toggle('active', checked.length > 0);
   if (detailCache[currentRow]) detailCache[currentRow]['マイリスト'] = newVal;
-  // スプレッドシートに保存
+  closeMyListModal();
+  renderMarkers();
   const url = gasUrl('action=update&row=' + currentRow
     + '&data=' + encodeURIComponent(JSON.stringify({ 'マイリスト': newVal })));
   jsonp(url, 20000)
-    .then(res => { if (res.success) showToast(newVal === '◯' ? '★ マイリストに追加しました' : 'マイリストから削除しました'); })
+    .then(res => { if (res.success) showToast(checked.length > 0 ? `★ ${checked.join('・')} に登録しました` : 'リストから削除しました'); })
     .catch(() => showToast('保存エラー'));
 }
 
@@ -1808,8 +1935,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('filter-close-btn').onclick = closeFilterSheet;
   document.getElementById('filter-reset-btn').onclick = resetFilters;
   document.getElementById('filter-overlay').onclick   = closeFilterSheet;
-  document.getElementById('mylist-btn').onclick       = toggleMyListForCurrent;
-  document.getElementById('fs-mylist-btn').onclick    = toggleMyListFilter;
+  document.getElementById('mylist-btn').onclick       = openMyListModal;
+  document.getElementById('ml-modal-cancel').onclick  = closeMyListModal;
+  document.getElementById('ml-modal-save').onclick    = saveMyListModal;
+  document.getElementById('ml-new-add-btn').onclick   = mlAddNewList;
+  document.getElementById('ml-new-input').addEventListener('keydown', e => { if (e.key === 'Enter') mlAddNewList(); });
+  document.getElementById('ml-modal-overlay').onclick = e => { if (e.target === e.currentTarget) closeMyListModal(); };
 
   const inp = document.getElementById('search-input');
   inp.addEventListener('input',  updateSuggest);
