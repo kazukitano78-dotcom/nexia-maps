@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ── 認証オーバーレイ ── */
@@ -940,13 +941,18 @@ let filterScore   = 'すべて';
 let filterStatus  = 'すべて';
 let filterCust    = 'すべて';
 let filterProduct = 'すべて';
-let gpsMarker = null, gpsCircle = null;
+let gpsMarker = null, gpsCircle = null, gpsHeading = null;
 
 // ════════════════════════════════════════════════════════
 // 地図初期化
 // ════════════════════════════════════════════════════════
 function initMap() {
-  map = L.map('map', { zoomControl: true }).setView(CENTER, ZOOM);
+  map = L.map('map', {
+    zoomControl: true,
+    rotate: true,
+    touchRotate: true,
+    rotateControl: { closeOnZeroBearing: false }
+  }).setView(CENTER, ZOOM);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19
@@ -1450,22 +1456,82 @@ function searchCompany() {
 // ════════════════════════════════════════════════════════
 // GPS現在地
 // ════════════════════════════════════════════════════════
+// GPS方向アイコン（コーン＋ドット）
+function makeGpsIcon() {
+  return L.divIcon({
+    html: `<div style="position:relative;width:50px;height:50px">
+      <svg id="gps-dir" width="50" height="50"
+        style="position:absolute;top:0;left:0;transform-origin:25px 25px;transition:transform 0.3s ease">
+        <path d="M25,2 L15,22 L35,22 Z"
+          fill="rgba(33,150,243,0.42)" stroke="rgba(33,150,243,0.85)" stroke-width="1.5"/>
+      </svg>
+      <div style="position:absolute;top:18px;left:18px;width:14px;height:14px;
+        border-radius:50%;background:#2196f3;border:3px solid white;
+        box-shadow:0 0 8px rgba(33,150,243,0.7);z-index:2"></div>
+    </div>`,
+    className: '',
+    iconSize: [50, 50],
+    iconAnchor: [25, 25]
+  });
+}
+
+// コーンを方位角で回す
+function updateGpsCone(heading) {
+  gpsHeading = heading;
+  const el = document.getElementById('gps-dir');
+  if (el) el.style.transform = `rotate(${heading}deg)`;
+}
+
+// デバイス方位のリスナーを登録
+function startOrientationWatch() {
+  const handler = e => {
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number') {
+      h = e.webkitCompassHeading;               // iOS
+    } else if (e.absolute && e.alpha != null) {
+      h = (360 - e.alpha + 360) % 360;          // Android（絶対方位）
+    } else if (!e.absolute && e.alpha != null) {
+      h = (360 - e.alpha + 360) % 360;          // Androidフォールバック
+    }
+    if (h != null) updateGpsCone(h);
+  };
+  window.addEventListener('deviceorientationabsolute', handler, true);
+  window.addEventListener('deviceorientation', handler, true);
+}
+
 function initGPS() {
   if (!navigator.geolocation) return;
+
   navigator.geolocation.watchPosition(pos => {
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
     const acc = pos.coords.accuracy;
     if (gpsMarker) {
-      gpsMarker.setLatLng([lat,lng]);
-      gpsCircle.setLatLng([lat,lng]).setRadius(acc);
+      gpsMarker.setLatLng([lat, lng]);
+      gpsCircle.setLatLng([lat, lng]).setRadius(acc);
     } else {
-      gpsMarker = L.marker([lat,lng], {
-        icon: L.divIcon({ html:'<div class="gps-dot"></div>', className:'', iconSize:[14,14], iconAnchor:[7,7] }),
+      gpsMarker = L.marker([lat, lng], {
+        icon: makeGpsIcon(),
         zIndexOffset: 1000
       }).addTo(map);
-      gpsCircle = L.circle([lat,lng], { radius:acc, color:'#2196f3', weight:1, fillOpacity:0.08 }).addTo(map);
+      gpsCircle = L.circle([lat, lng], {
+        radius: acc, color:'#2196f3', weight:1, fillOpacity:0.08
+      }).addTo(map);
     }
+    // 方位がすでにあれば描画
+    if (gpsHeading != null) updateGpsCone(gpsHeading);
   }, null, { enableHighAccuracy:true, maximumAge:5000 });
+
+  // iOS13+ は初回タップ時に許可を求める
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    document.getElementById('gps-btn').addEventListener('click', () => {
+      DeviceOrientationEvent.requestPermission()
+        .then(s => { if (s === 'granted') startOrientationWatch(); })
+        .catch(() => {});
+    }, { once: true });
+  } else {
+    startOrientationWatch(); // Android / 通常ブラウザ
+  }
 }
 
 function flyToGPS() {
