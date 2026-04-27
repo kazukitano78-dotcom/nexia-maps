@@ -908,8 +908,8 @@ function handleAuthError() {
 let map, clusterGroup;
 let allPoints  = [];
 let allMarkers = {};
-const CACHE_KEY_POINTS  = 'nexia_points';
-const CACHE_KEY_DETAILS = 'nexia_details';
+const CACHE_KEY_POINTS  = 'nexia_points_v2'; // v2: 商材フラグ追加
+const CACHE_KEY_DETAILS = 'nexia_details_v2';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6時間
 
 function cacheLoad(key) {
@@ -1608,31 +1608,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── スワイプダウンでパネルを閉じる ──
-  let _swipeStartY = 0;
-  let _swipeStartScrollTop = 0;
-  const _panelEl = document.getElementById('panel');
-  const _panelHdr = document.getElementById('panel-header');
-  const _tabContent = document.getElementById('tab-content');
+  {
+    let _sy = 0, _active = false;
+    const _panel    = document.getElementById('panel');
+    const _tcontent = document.getElementById('tab-content');
 
-  _panelHdr.addEventListener('touchstart', e => {
-    _swipeStartY = e.touches[0].clientY;
-  }, { passive: true });
+    _panel.addEventListener('touchstart', e => {
+      const rect   = _panel.getBoundingClientRect();
+      const touchY = e.touches[0].clientY;
+      // ヘッダー領域（上90px）からのスワイプのみ検知
+      _active = (touchY - rect.top) < 90;
+      _sy = touchY;
+    }, { passive: true });
 
-  _panelHdr.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - _swipeStartY;
-    if (dy > 60) closePanel();
-  }, { passive: true });
+    _panel.addEventListener('touchend', e => {
+      if (!_active) return;
+      const dy = e.changedTouches[0].clientY - _sy;
+      if (dy > 50) closePanel();
+      _active = false;
+    }, { passive: true });
 
-  // コンテンツ部分：スクロール最上部でスワイプダウンしたときも閉じる
-  _tabContent.addEventListener('touchstart', e => {
-    _swipeStartY = e.touches[0].clientY;
-    _swipeStartScrollTop = _tabContent.scrollTop;
-  }, { passive: true });
-
-  _tabContent.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - _swipeStartY;
-    if (dy > 80 && _swipeStartScrollTop === 0) closePanel();
-  }, { passive: true });
+    // コンテンツ最上部でのスワイプダウン
+    _tcontent.addEventListener('touchstart', e => {
+      _sy = e.touches[0].clientY;
+    }, { passive: true });
+    _tcontent.addEventListener('touchend', e => {
+      const dy = e.changedTouches[0].clientY - _sy;
+      if (dy > 70 && _tcontent.scrollTop < 2) closePanel();
+    }, { passive: true });
+  }
 });
 </script>
 
