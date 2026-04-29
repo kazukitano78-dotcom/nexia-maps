@@ -61,6 +61,40 @@ function doGet(e) {
   return respond(result);
 }
 
+function doPost(e) {
+  let body;
+  try {
+    body = JSON.parse(e.postData.contents);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: 'Invalid JSON body' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  function respond(result) {
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const action = body.action || '';
+  try {
+    checkSession(body.s);
+  } catch(err) {
+    return respond({ error: 'AUTH_ERROR: ' + err.message });
+  }
+
+  let result;
+  try {
+    if (action === 'update') {
+      result = updateCompany(parseInt(body.row), body.data);
+    } else {
+      result = { error: 'Unknown action: ' + action };
+    }
+  } catch (err) {
+    result = { error: err.message };
+  }
+  return respond(result);
+}
+
 function verifyGoogleToken(idToken) {
   if (!idToken || idToken === 'null') throw new Error('トークンがありません');
   const parts = idToken.split('.');
@@ -130,11 +164,11 @@ function getMapPoints() {
     const lo = parseFloat(data[i][idx.lo]);
     if (!la || !lo || isNaN(la) || isNaN(lo)) continue;
     points.push({
-      r:   i + 1, la, lo,
-      n:   idx.n   >= 0 ? data[i][idx.n]   : '',
-      f:   idx.f   >= 0 ? data[i][idx.f]   : '',
-      res: idx.res >= 0 ? data[i][idx.res] : '',
-      l:   idx.l   >= 0 ? data[i][idx.l]   : '',
+      r:    i + 1, la, lo,
+      n:    idx.n    >= 0 ? data[i][idx.n]    : '',
+      f:    idx.f    >= 0 ? data[i][idx.f]    : '',
+      res:  idx.res  >= 0 ? data[i][idx.res]  : '',
+      l:    idx.l    >= 0 ? data[i][idx.l]    : '',
       pid:  idx.pid  >= 0 ? data[i][idx.pid]  : '',
       cust: idx.cust >= 0 ? data[i][idx.cust] : '',
       bf:   idx.bf   >= 0 ? data[i][idx.bf]   : '',

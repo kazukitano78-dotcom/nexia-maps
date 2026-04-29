@@ -71,6 +71,43 @@ function doGet(e) {
 }
 
 // ──────────────────────────────────────────
+// POST ハンドラ（update専用 - URL長さ制限回避）
+// ──────────────────────────────────────────
+function doPost(e) {
+  let body;
+  try {
+    body = JSON.parse(e.postData.contents);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: 'Invalid JSON body' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  function respond(result) {
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const action = body.action || '';
+  try {
+    checkSession(body.s);
+  } catch(err) {
+    return respond({ error: 'AUTH_ERROR: ' + err.message });
+  }
+
+  let result;
+  try {
+    if (action === 'update') {
+      result = updateCompany(parseInt(body.row), body.data);
+    } else {
+      result = { error: 'Unknown action: ' + action };
+    }
+  } catch (err) {
+    result = { error: err.message };
+  }
+  return respond(result);
+}
+
+// ──────────────────────────────────────────
 // Google IDトークン検証（JWTペイロードデコード）
 // ──────────────────────────────────────────
 function verifyGoogleToken(idToken) {

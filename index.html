@@ -976,7 +976,7 @@ textarea.field-input { resize:vertical; min-height:80px; }
 // ════════════════════════════════════════════════════════
 // 設定
 // ════════════════════════════════════════════════════════
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbzZ80i4QwhrIo5mifonxjqg-wwriv_zpr-AUdBzxviTyht_vksSGGsg8az55jDkB5h0HA/exec';
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbybZtmFCv2Wwm5rxYdGkX-HRsynBeDSOoD985Fj35pJUBE709WcWNiU7Y5u5K6dfsERzQ/exec';
 const CLIENT_ID = '282285131661-pmekrv7p2rtbf6lsd3gplro93384v42s.apps.googleusercontent.com';
 const CENTER    = [34.66, 133.93];
 const ZOOM      = 13;
@@ -988,6 +988,19 @@ let sessionId = sessionStorage.getItem('nexia_session') || null;
 
 function gasUrl(params) {
   return GAS_URL + '?' + params + '&s=' + (sessionId || '');
+}
+
+// POST fetch（updateに使用 - URL長さ制限回避）
+function gasPost(payload, timeoutMs) {
+  timeoutMs = timeoutMs || 30000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify(Object.assign({}, payload, { s: sessionId || '' }))
+  })
+    .then(r => { clearTimeout(timer); return r.json(); })
+    .catch(err => { clearTimeout(timer); throw err; });
 }
 
 const ALLOWED_EMAILS_CLIENT = ['kazuki.tano78@gmail.com'];
@@ -1499,11 +1512,8 @@ function saveDetail() {
     '備考欄':           val('f-memo'),
   };
 
-  const url = gasUrl('action=update&row=' + currentRow
-    + '&data=' + encodeURIComponent(JSON.stringify(data)));
-
   showLoading(true);
-  jsonp(url, 45000)
+  gasPost({ action: 'update', row: currentRow, data: data }, 45000)
     .then(res => {
       showLoading(false);
       if (res.success) {
@@ -1855,9 +1865,7 @@ function saveMyListModal() {
   if (detailCache[currentRow]) detailCache[currentRow]['マイリスト'] = newVal;
   closeMyListModal();
   renderMarkers();
-  const url = gasUrl('action=update&row=' + currentRow
-    + '&data=' + encodeURIComponent(JSON.stringify({ 'マイリスト': newVal })));
-  jsonp(url, 20000)
+  gasPost({ action: 'update', row: currentRow, data: { 'マイリスト': newVal } }, 20000)
     .then(res => { if (res.success) showToast(checked.length > 0 ? `★ ${checked.join('・')} に登録しました` : 'リストから削除しました'); })
     .catch(() => showToast('保存エラー'));
 }
